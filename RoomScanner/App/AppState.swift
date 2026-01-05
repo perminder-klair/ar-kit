@@ -34,6 +34,7 @@ final class AppState: ObservableObject {
 
     let roomCaptureService = RoomCaptureService()
     let damageAnalysisService = DamageAnalysisService()
+    let frameCaptureService = ARFrameCaptureService()
 
     // MARK: - Computed Properties
 
@@ -73,6 +74,20 @@ final class AppState: ObservableObject {
             damageAnalysisService.setRoom(room)
         }
         damageAnalysisResult = nil
+
+        // Auto-populate images from frame capture if available
+        if hasCapturedFrames {
+            damageAnalysisService.clearPendingImages()
+            let images = frameCaptureService.getImagesForAnalysis()
+            for image in images {
+                damageAnalysisService.addImageData(
+                    image.data,
+                    surfaceType: image.surfaceType,
+                    surfaceId: image.surfaceId
+                )
+            }
+        }
+
         navigateTo(.damageAnalysis)
     }
 
@@ -90,12 +105,21 @@ final class AppState: ObservableObject {
         damageAnalysisService.isConfigured
     }
 
+    var hasCapturedFrames: Bool {
+        !frameCaptureService.capturedFrames.isEmpty
+    }
+
+    var capturedFrameCount: Int {
+        frameCaptureService.frameCount
+    }
+
     func reset() {
         capturedRoom = nil
         scanError = nil
         isScanning = false
         damageAnalysisResult = nil
         damageAnalysisService.reset()
+        frameCaptureService.reset()
         navigateTo(.home)
     }
 }

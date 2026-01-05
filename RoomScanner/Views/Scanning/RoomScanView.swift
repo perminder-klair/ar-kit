@@ -4,14 +4,24 @@ import AVFoundation
 
 // MARK: - RoomCaptureViewController
 
+/// Room capture controller using Apple's RoomCaptureView for AR visualization
+/// Uses screenshot-based frame capture for damage analysis images
 final class RoomCaptureViewController: UIViewController {
+
+    // MARK: - Properties
+
     private var roomCaptureView: RoomCaptureView!
     private let sessionConfig: RoomCaptureSession.Configuration
     private var isSessionRunning = false
 
+    // MARK: - Screenshot Capture
+
+    private var screenshotTimer: Timer?
+    private let screenshotInterval: TimeInterval = 2.0
+    weak var frameCaptureService: ARFrameCaptureService?
+
     weak var delegate: RoomCaptureContainerDelegate? {
         didSet {
-            // Update delegates if view already exists
             if roomCaptureView != nil {
                 roomCaptureView.captureSession.delegate = delegate
                 roomCaptureView.delegate = delegate
@@ -19,8 +29,9 @@ final class RoomCaptureViewController: UIViewController {
         }
     }
 
-    init(configuration: RoomCaptureSession.Configuration) {
+    init(configuration: RoomCaptureSession.Configuration, frameCaptureService: ARFrameCaptureService?) {
         self.sessionConfig = configuration
+        self.frameCaptureService = frameCaptureService
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -35,7 +46,6 @@ final class RoomCaptureViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // Auto-start session when view appears to initialize video pipeline
         startSession()
     }
 
@@ -44,29 +54,73 @@ final class RoomCaptureViewController: UIViewController {
         stopSession()
     }
 
+    // MARK: - Setup
+
     private func setupRoomCaptureView() {
-        // Create RoomCaptureView with the view's bounds (proper sizing)
+        // Create RoomCaptureView - Apple's polished AR scanning UI
         roomCaptureView = RoomCaptureView(frame: view.bounds)
         roomCaptureView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
-        // Set delegates immediately after creation
+        // Set delegates
         roomCaptureView.captureSession.delegate = delegate
         roomCaptureView.delegate = delegate
 
-        // Add to view hierarchy - this allows Metal/video pipeline to initialize
         view.addSubview(roomCaptureView)
     }
 
     func startSession() {
         guard !isSessionRunning else { return }
         isSessionRunning = true
+
+        // Start room capture
         roomCaptureView.captureSession.run(configuration: sessionConfig)
+
+        // Start screenshot capture for damage analysis
+        startScreenshotCapture()
+
+        print("RoomCaptureViewController: Session started with screenshot capture")
     }
 
     func stopSession() {
         guard isSessionRunning else { return }
         isSessionRunning = false
+
+        // Stop screenshot capture
+        stopScreenshotCapture()
+
+        // Stop room capture
         roomCaptureView.captureSession.stop()
+
+        print("RoomCaptureViewController: Session stopped, captured \(frameCaptureService?.frameCount ?? 0) screenshots")
+    }
+
+    // MARK: - Screenshot Capture
+
+    private func startScreenshotCapture() {
+        frameCaptureService?.startCapturing()
+
+        screenshotTimer = Timer.scheduledTimer(withTimeInterval: screenshotInterval, repeats: true) { [weak self] _ in
+            self?.captureScreenshot()
+        }
+    }
+
+    private func stopScreenshotCapture() {
+        screenshotTimer?.invalidate()
+        screenshotTimer = nil
+        frameCaptureService?.stopCapturing()
+    }
+
+    private func captureScreenshot() {
+        guard isSessionRunning else { return }
+
+        // Capture the RoomCaptureView content
+        let renderer = UIGraphicsImageRenderer(bounds: roomCaptureView.bounds)
+        let image = renderer.image { _ in
+            roomCaptureView.drawHierarchy(in: roomCaptureView.bounds, afterScreenUpdates: false)
+        }
+
+        // Send to frame capture service
+        frameCaptureService?.addScreenshot(image)
     }
 }
 
@@ -75,10 +129,14 @@ final class RoomCaptureViewController: UIViewController {
 struct RoomCaptureViewControllerRepresentable: UIViewControllerRepresentable {
     let configuration: RoomCaptureSession.Configuration
     let delegate: RoomCaptureContainerDelegate
+    let frameCaptureService: ARFrameCaptureService?
     var onViewControllerCreated: ((RoomCaptureViewController) -> Void)?
 
     func makeUIViewController(context: Context) -> RoomCaptureViewController {
-        let viewController = RoomCaptureViewController(configuration: configuration)
+        let viewController = RoomCaptureViewController(
+            configuration: configuration,
+            frameCaptureService: frameCaptureService
+        )
         viewController.delegate = delegate
 
         // Provide reference back to SwiftUI
@@ -90,7 +148,6 @@ struct RoomCaptureViewControllerRepresentable: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: RoomCaptureViewController, context: Context) {
-        // Update delegate reference if needed
         uiViewController.delegate = delegate
     }
 }
@@ -167,10 +224,11 @@ struct RoomScanView: View {
 
     var body: some View {
         ZStack {
-            // ALWAYS render RoomCaptureView so video pipeline initializes
+            // RoomCaptureView with AR scanning lines and coaching UI
             RoomCaptureViewControllerRepresentable(
                 configuration: appState.roomCaptureService.createConfiguration(),
                 delegate: delegate,
+                frameCaptureService: appState.frameCaptureService,
                 onViewControllerCreated: { vc in
                     viewController = vc
                 }
@@ -224,7 +282,8 @@ struct RoomScanView: View {
                 VStack {
                     // Top status bar
                     ScanStatusBar(
-                        detectedItems: appState.roomCaptureService.detectedItems
+                        detectedItems: appState.roomCaptureService.detectedItems,
+                        capturedFrames: appState.capturedFrameCount
                     )
                     .padding(.top, 60)
                     .padding(.horizontal)
@@ -255,6 +314,8 @@ struct RoomScanView: View {
         }
         .onAppear {
             delegate.appState = appState
+            // Clear any previous frames for a fresh scan
+            appState.frameCaptureService.clearFrames()
             checkCameraPermission()
         }
     }
@@ -299,13 +360,14 @@ struct RoomScanView: View {
 
 struct ScanStatusBar: View {
     let detectedItems: RoomCaptureService.DetectedItems
+    var capturedFrames: Int = 0
 
     var body: some View {
         HStack(spacing: 16) {
             StatusItem(icon: "rectangle.portrait", count: detectedItems.wallCount, label: "Walls")
             StatusItem(icon: "door.left.hand.closed", count: detectedItems.doorCount, label: "Doors")
             StatusItem(icon: "window.vertical.closed", count: detectedItems.windowCount, label: "Windows")
-            StatusItem(icon: "cube", count: detectedItems.objectCount, label: "Objects")
+            StatusItem(icon: "camera.fill", count: capturedFrames, label: "Photos")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)

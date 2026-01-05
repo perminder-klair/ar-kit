@@ -12,6 +12,8 @@ struct DamageAnalysisView: View {
     @State private var errorMessage: String?
     @State private var showError = false
     @State private var selectedSurfaceType: SurfaceType = .wall
+    @State private var useAutoCapturedImages = true
+    @State private var autoCapturedPreviews: [UIImage] = []
 
     init() {
         // Initialize with a placeholder, will be replaced by EnvironmentObject
@@ -43,25 +45,41 @@ struct DamageAnalysisView: View {
             }
         }
         .onAppear {
-            // Get the actual service from appState
+            loadAutoCapturedImages()
         }
+    }
+
+    private func loadAutoCapturedImages() {
+        // Load preview images from captured frames
+        let frames = appState.frameCaptureService.capturedFrames
+        autoCapturedPreviews = frames.compactMap { frame in
+            UIImage(data: frame.imageData)
+        }
+
+        // If we have auto-captured images, use them by default
+        useAutoCapturedImages = !frames.isEmpty
     }
 
     private var mainContent: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Instructions
-                instructionsCard
+                // Show auto-captured images or manual selection
+                if !autoCapturedPreviews.isEmpty {
+                    autoCapturedSection
+                } else {
+                    // Instructions
+                    instructionsCard
 
-                // Surface type picker
-                surfaceTypePicker
+                    // Surface type picker
+                    surfaceTypePicker
 
-                // Image picker
-                imagePickerSection
+                    // Image picker
+                    imagePickerSection
 
-                // Selected images
-                if !loadedImages.isEmpty {
-                    selectedImagesSection
+                    // Selected images
+                    if !loadedImages.isEmpty {
+                        selectedImagesSection
+                    }
                 }
 
                 // Analyze button
@@ -73,6 +91,63 @@ struct DamageAnalysisView: View {
             if isAnalyzing {
                 analysisOverlay
             }
+        }
+    }
+
+    private var autoCapturedSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Success banner
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.title2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Images Captured Automatically")
+                        .font(.headline)
+                    Text("\(autoCapturedPreviews.count) images captured during scan")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding()
+            .background(Color.green.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            // Image preview grid
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Captured Images")
+                    .font(.headline)
+
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 8) {
+                    ForEach(Array(autoCapturedPreviews.enumerated()), id: \.offset) { index, image in
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 100)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+
+            // Option to add manual photos
+            Button {
+                useAutoCapturedImages = false
+                autoCapturedPreviews = []
+                appState.damageAnalysisService.clearPendingImages()
+            } label: {
+                HStack {
+                    Image(systemName: "photo.on.rectangle.angled")
+                    Text("Select Different Photos Instead")
+                }
+                .font(.subheadline)
+                .foregroundColor(.blue)
+            }
+            .padding(.top, 8)
         }
     }
 
@@ -171,22 +246,25 @@ struct DamageAnalysisView: View {
     }
 
     private var analyzeButton: some View {
-        Button {
+        let hasImages = !autoCapturedPreviews.isEmpty || !loadedImages.isEmpty
+        let imageCount = autoCapturedPreviews.isEmpty ? loadedImages.count : autoCapturedPreviews.count
+
+        return Button {
             Task {
                 await startAnalysis()
             }
         } label: {
             HStack {
                 Image(systemName: "wand.and.stars")
-                Text("Analyze for Damage")
+                Text(hasImages ? "Analyze \(imageCount) Images" : "Analyze for Damage")
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(loadedImages.isEmpty ? Color.gray : Color.green)
+            .background(hasImages ? Color.green : Color.gray)
             .foregroundColor(.white)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .disabled(loadedImages.isEmpty || isAnalyzing)
+        .disabled(!hasImages || isAnalyzing)
     }
 
     private var analysisOverlay: some View {
@@ -239,14 +317,17 @@ struct DamageAnalysisView: View {
         isAnalyzing = true
         errorMessage = nil
 
-        // Add images to service
-        appState.damageAnalysisService.clearPendingImages()
-        for item in loadedImages {
-            appState.damageAnalysisService.addImageData(
-                item.data,
-                surfaceType: selectedSurfaceType
-            )
+        // If using manually selected images, add them to service
+        if autoCapturedPreviews.isEmpty && !loadedImages.isEmpty {
+            appState.damageAnalysisService.clearPendingImages()
+            for item in loadedImages {
+                appState.damageAnalysisService.addImageData(
+                    item.data,
+                    surfaceType: selectedSurfaceType
+                )
+            }
         }
+        // Auto-captured images are already loaded in AppState.startDamageAnalysis()
 
         do {
             let result = try await appState.damageAnalysisService.analyzeWithPendingImages()

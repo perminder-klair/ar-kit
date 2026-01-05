@@ -64,11 +64,15 @@ struct DimensionsView: View {
                 } label: {
                     HStack {
                         Image(systemName: "wand.and.stars")
-                        Text("Analyze for Damage")
+                        if appState.capturedFrameCount > 0 {
+                            Text("Analyze for Damage (\(appState.capturedFrameCount) images)")
+                        } else {
+                            Text("Analyze for Damage")
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.orange)
+                    .background(appState.capturedFrameCount > 0 ? Color.green : Color.orange)
                     .foregroundColor(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }

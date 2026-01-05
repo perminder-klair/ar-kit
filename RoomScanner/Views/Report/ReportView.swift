@@ -26,6 +26,11 @@ struct ReportView: View {
                         ReportSummaryHeader(dimensions: dims, unit: selectedUnit)
                     }
 
+                    // Damage Analysis Summary (if available)
+                    if let damageResult = appState.damageAnalysisResult {
+                        DamageReportSection(damageResult: damageResult)
+                    }
+
                     // Export Options
                     ExportOptionsSection(
                         onExportUSDZ: exportUSDZ,
@@ -101,7 +106,10 @@ struct ReportView: View {
 
             do {
                 guard let dims = dimensions else { return }
-                let url = try exporter.exportJSON(dimensions: dims)
+                let url = try exporter.exportJSON(
+                    dimensions: dims,
+                    damageAnalysis: appState.damageAnalysisResult
+                )
                 exportedFileURL = url
                 showShareSheet = true
             } catch {
@@ -117,12 +125,87 @@ struct ReportView: View {
 
             do {
                 guard let dims = dimensions else { return }
-                let url = try exporter.exportPDF(dimensions: dims, capturedRoom: capturedRoom)
+                let url = try exporter.exportPDF(
+                    dimensions: dims,
+                    capturedRoom: capturedRoom,
+                    damageAnalysis: appState.damageAnalysisResult
+                )
                 exportedFileURL = url
                 showShareSheet = true
             } catch {
                 exportError = error.localizedDescription
             }
+        }
+    }
+}
+
+// MARK: - Damage Report Section
+
+struct DamageReportSection: View {
+    let damageResult: DamageAnalysisResult
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Damage Assessment")
+                    .font(.headline)
+                Spacer()
+                ConditionBadge(condition: damageResult.overallCondition)
+            }
+
+            VStack(spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(damageResult.detectedDamages.count)")
+                            .font(.title2.bold())
+                        Text("Issues Found")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    VStack(alignment: .center, spacing: 4) {
+                        Text("\(damageResult.criticalCount)")
+                            .font(.title2.bold())
+                            .foregroundColor(damageResult.criticalCount > 0 ? .red : .primary)
+                        Text("Critical")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("\(damageResult.highPriorityCount)")
+                            .font(.title2.bold())
+                            .foregroundColor(damageResult.highPriorityCount > 0 ? .orange : .primary)
+                        Text("High Priority")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if !damageResult.detectedDamages.isEmpty {
+                    Divider()
+
+                    // Top damages preview
+                    ForEach(damageResult.detectedDamages.prefix(3)) { damage in
+                        HStack {
+                            DamageTypeIcon(damageType: damage.type, size: 16)
+                            Text(damage.type.displayName)
+                                .font(.subheadline)
+                            Spacer()
+                            SeverityBadge(severity: damage.severity)
+                        }
+                    }
+
+                    if damageResult.detectedDamages.count > 3 {
+                        Text("+ \(damageResult.detectedDamages.count - 3) more issues")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
         }
     }
 }

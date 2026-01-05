@@ -19,6 +19,12 @@ struct ContentView: View {
                     } else {
                         ErrorView(message: "No room data available")
                     }
+                case .damageAnalysis:
+                    DamageAnalysisView()
+
+                case .damageResults:
+                    DamageResultsView()
+
                 case .report:
                     if let room = appState.capturedRoom {
                         ReportView(capturedRoom: room)

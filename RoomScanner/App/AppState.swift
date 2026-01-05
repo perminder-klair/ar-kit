@@ -13,6 +13,8 @@ final class AppState: ObservableObject {
         case scanning
         case processing
         case dimensions
+        case damageAnalysis
+        case damageResults
         case report
     }
 
@@ -24,9 +26,14 @@ final class AppState: ObservableObject {
     @Published var isScanning: Bool = false
     @Published var scanError: String?
 
+    // MARK: - Damage Analysis State
+
+    @Published var damageAnalysisResult: DamageAnalysisResult?
+
     // MARK: - Services
 
     let roomCaptureService = RoomCaptureService()
+    let damageAnalysisService = DamageAnalysisService()
 
     // MARK: - Computed Properties
 
@@ -59,10 +66,36 @@ final class AppState: ObservableObject {
         navigateTo(.home)
     }
 
+    // MARK: - Damage Analysis Methods
+
+    func startDamageAnalysis() {
+        if let room = capturedRoom {
+            damageAnalysisService.setRoom(room)
+        }
+        damageAnalysisResult = nil
+        navigateTo(.damageAnalysis)
+    }
+
+    func completeDamageAnalysis(with result: DamageAnalysisResult) {
+        damageAnalysisResult = result
+        navigateTo(.damageResults)
+    }
+
+    func cancelDamageAnalysis() {
+        damageAnalysisService.reset()
+        navigateTo(.dimensions)
+    }
+
+    var isDamageAnalysisConfigured: Bool {
+        damageAnalysisService.isConfigured
+    }
+
     func reset() {
         capturedRoom = nil
         scanError = nil
         isScanning = false
+        damageAnalysisResult = nil
+        damageAnalysisService.reset()
         navigateTo(.home)
     }
 }

@@ -21,6 +21,16 @@
 		7E6C1CB62F0C0282000AE92A /* RoomScannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1C912F0C0282000AE92A /* RoomScannerApp.swift */; };
 		7E6C1CB72F0C0282000AE92A /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1C8F2F0C0282000AE92A /* AppState.swift */; };
 		7E6C1CB82F0C0282000AE92A /* RoomExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1C972F0C0282000AE92A /* RoomExporter.swift */; };
+		7E6C1D112F0C0283000AE92A /* GeminiConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D012F0C0283000AE92A /* GeminiConfig.swift */; };
+		7E6C1D122F0C0283000AE92A /* GeminiAPIKey.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7E6C1D022F0C0283000AE92A /* GeminiAPIKey.plist */; };
+		7E6C1D132F0C0283000AE92A /* DamageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D032F0C0283000AE92A /* DamageModel.swift */; };
+		7E6C1D142F0C0283000AE92A /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D042F0C0283000AE92A /* GeminiService.swift */; };
+		7E6C1D152F0C0283000AE92A /* DamageAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D052F0C0283000AE92A /* DamageAnalysisService.swift */; };
+		7E6C1D162F0C0283000AE92A /* ImageCaptureHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D062F0C0283000AE92A /* ImageCaptureHelper.swift */; };
+		7E6C1D172F0C0283000AE92A /* DamageComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D072F0C0283000AE92A /* DamageComponents.swift */; };
+		7E6C1D182F0C0283000AE92A /* DamageAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D082F0C0283000AE92A /* DamageAnalysisView.swift */; };
+		7E6C1D192F0C0283000AE92A /* DamageResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D092F0C0283000AE92A /* DamageResultsView.swift */; };
+		7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +49,16 @@
 		7E6C1CA42F0C0282000AE92A /* RoomCaptureViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCaptureViewRepresentable.swift; sourceTree = "<group>"; };
 		7E6C1CA52F0C0282000AE92A /* RoomScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomScanView.swift; sourceTree = "<group>"; };
 		7E6C1CA82F0C0282000AE92A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7E6C1D012F0C0283000AE92A /* GeminiConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiConfig.swift; sourceTree = "<group>"; };
+		7E6C1D022F0C0283000AE92A /* GeminiAPIKey.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = GeminiAPIKey.plist; sourceTree = "<group>"; };
+		7E6C1D032F0C0283000AE92A /* DamageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageModel.swift; sourceTree = "<group>"; };
+		7E6C1D042F0C0283000AE92A /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
+		7E6C1D052F0C0283000AE92A /* DamageAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageAnalysisService.swift; sourceTree = "<group>"; };
+		7E6C1D062F0C0283000AE92A /* ImageCaptureHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCaptureHelper.swift; sourceTree = "<group>"; };
+		7E6C1D072F0C0283000AE92A /* DamageComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageComponents.swift; sourceTree = "<group>"; };
+		7E6C1D082F0C0283000AE92A /* DamageAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageAnalysisView.swift; sourceTree = "<group>"; };
+		7E6C1D092F0C0283000AE92A /* DamageResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageResultsView.swift; sourceTree = "<group>"; };
+		7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageDetailView.swift; sourceTree = "<group>"; };
 		7EA7734F2F0BE7FA00907D2C /* FixzyRoomScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FixzyRoomScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -63,6 +83,36 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		7E6C1D202F0C0283000AE92A /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				7E6C1D012F0C0283000AE92A /* GeminiConfig.swift */,
+				7E6C1D022F0C0283000AE92A /* GeminiAPIKey.plist */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		7E6C1D212F0C0283000AE92A /* DamageDetection */ = {
+			isa = PBXGroup;
+			children = (
+				7E6C1D042F0C0283000AE92A /* GeminiService.swift */,
+				7E6C1D052F0C0283000AE92A /* DamageAnalysisService.swift */,
+				7E6C1D062F0C0283000AE92A /* ImageCaptureHelper.swift */,
+			);
+			path = DamageDetection;
+			sourceTree = "<group>";
+		};
+		7E6C1D222F0C0283000AE92A /* DamageDetection */ = {
+			isa = PBXGroup;
+			children = (
+				7E6C1D072F0C0283000AE92A /* DamageComponents.swift */,
+				7E6C1D082F0C0283000AE92A /* DamageAnalysisView.swift */,
+				7E6C1D092F0C0283000AE92A /* DamageResultsView.swift */,
+				7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */,
+			);
+			path = DamageDetection;
+			sourceTree = "<group>";
+		};
 		7E6C1C942F0C0282000AE92A /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
@@ -75,6 +125,7 @@
 			isa = PBXGroup;
 			children = (
 				7E6C1C952F0C0282000AE92A /* RoomModel.swift */,
+				7E6C1D032F0C0283000AE92A /* DamageModel.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -99,6 +150,7 @@
 		7E6C1C9C2F0C0282000AE92A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				7E6C1D212F0C0283000AE92A /* DamageDetection */,
 				7E6C1C982F0C0282000AE92A /* Export */,
 				7E6C1C9B2F0C0282000AE92A /* RoomCapture */,
 			);
@@ -143,6 +195,7 @@
 			isa = PBXGroup;
 			children = (
 				7E6C1C9F2F0C0282000AE92A /* Common */,
+				7E6C1D222F0C0283000AE92A /* DamageDetection */,
 				7E6C1CA12F0C0282000AE92A /* Dimensions */,
 				7E6C1CA32F0C0282000AE92A /* Report */,
 				7E6C1CA62F0C0282000AE92A /* Scanning */,
@@ -154,6 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				7E6C1C922F0C0282000AE92A /* App */,
+				7E6C1D202F0C0283000AE92A /* Config */,
 				7E6C1C942F0C0282000AE92A /* Extensions */,
 				7E6C1C962F0C0282000AE92A /* Models */,
 				7E6C1C9C2F0C0282000AE92A /* Services */,
@@ -240,6 +294,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E6C1D122F0C0283000AE92A /* GeminiAPIKey.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -264,6 +319,15 @@
 				7E6C1CB62F0C0282000AE92A /* RoomScannerApp.swift in Sources */,
 				7E6C1CB72F0C0282000AE92A /* AppState.swift in Sources */,
 				7E6C1CB82F0C0282000AE92A /* RoomExporter.swift in Sources */,
+				7E6C1D112F0C0283000AE92A /* GeminiConfig.swift in Sources */,
+				7E6C1D132F0C0283000AE92A /* DamageModel.swift in Sources */,
+				7E6C1D142F0C0283000AE92A /* GeminiService.swift in Sources */,
+				7E6C1D152F0C0283000AE92A /* DamageAnalysisService.swift in Sources */,
+				7E6C1D162F0C0283000AE92A /* ImageCaptureHelper.swift in Sources */,
+				7E6C1D172F0C0283000AE92A /* DamageComponents.swift in Sources */,
+				7E6C1D182F0C0283000AE92A /* DamageAnalysisView.swift in Sources */,
+				7E6C1D192F0C0283000AE92A /* DamageResultsView.swift in Sources */,
+				7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

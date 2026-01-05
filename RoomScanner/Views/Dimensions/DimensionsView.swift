@@ -56,6 +56,41 @@ struct DimensionsView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 12) {
+                // Damage Analysis Button
+                Button {
+                    appState.startDamageAnalysis()
+                } label: {
+                    HStack {
+                        Image(systemName: "wand.and.stars")
+                        Text("Analyze for Damage")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.orange)
+                    .foregroundColor(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                // View Report Button
+                Button {
+                    appState.navigateTo(.report)
+                } label: {
+                    HStack {
+                        Image(systemName: "doc.text")
+                        Text("View Report")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+            .padding()
+            .background(.ultraThinMaterial)
+        }
         .sheet(isPresented: $showExportSheet) {
             if let dims = dimensions {
                 ReportView(capturedRoom: capturedRoom)

@@ -29,6 +29,7 @@ final class RoomExporter {
         let exportDate: Date
         let roomDimensions: RoomDimensionsData
         let surfaces: SurfacesData
+        let damageAnalysis: DamageAnalysisData?
 
         struct RoomDimensionsData: Codable {
             let floorAreaM2: Float
@@ -56,6 +57,24 @@ final class RoomExporter {
                 let widthM: Float
                 let heightM: Float
                 let areaM2: Float
+            }
+        }
+
+        struct DamageAnalysisData: Codable {
+            let analysisDate: Date
+            let overallCondition: String
+            let totalDamagesFound: Int
+            let criticalDamages: Int
+            let highPriorityDamages: Int
+            let damages: [DamageData]
+
+            struct DamageData: Codable {
+                let type: String
+                let severity: String
+                let surfaceType: String
+                let description: String
+                let confidence: Float
+                let recommendation: String?
             }
         }
     }
@@ -115,7 +134,15 @@ final class RoomExporter {
 
     /// Export dimensions as JSON
     func exportJSON(dimensions: CapturedRoomProcessor.RoomDimensions) throws -> URL {
-        let exportData = createExportData(from: dimensions)
+        try exportJSON(dimensions: dimensions, damageAnalysis: nil)
+    }
+
+    /// Export dimensions with damage analysis as JSON
+    func exportJSON(
+        dimensions: CapturedRoomProcessor.RoomDimensions,
+        damageAnalysis: DamageAnalysisResult?
+    ) throws -> URL {
+        let exportData = createExportData(from: dimensions, damageAnalysis: damageAnalysis)
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -143,7 +170,16 @@ final class RoomExporter {
         dimensions: CapturedRoomProcessor.RoomDimensions,
         capturedRoom: CapturedRoom
     ) throws -> URL {
-        let pdfData = generatePDFData(dimensions: dimensions, capturedRoom: capturedRoom)
+        try exportPDF(dimensions: dimensions, capturedRoom: capturedRoom, damageAnalysis: nil)
+    }
+
+    /// Export as PDF report with damage analysis
+    func exportPDF(
+        dimensions: CapturedRoomProcessor.RoomDimensions,
+        capturedRoom: CapturedRoom,
+        damageAnalysis: DamageAnalysisResult?
+    ) throws -> URL {
+        let pdfData = generatePDFData(dimensions: dimensions, capturedRoom: capturedRoom, damageAnalysis: damageAnalysis)
 
         let filename = generateFilename(extension: "pdf")
         let url = exportDirectory.appendingPathComponent(filename)
@@ -165,7 +201,10 @@ final class RoomExporter {
         return "RoomScan_\(timestamp)\(suffix).\(ext)"
     }
 
-    private func createExportData(from dimensions: CapturedRoomProcessor.RoomDimensions) -> RoomExportData {
+    private func createExportData(
+        from dimensions: CapturedRoomProcessor.RoomDimensions,
+        damageAnalysis: DamageAnalysisResult? = nil
+    ) -> RoomExportData {
         let roomData = RoomExportData.RoomDimensionsData(
             floorAreaM2: dimensions.totalFloorArea,
             wallAreaM2: dimensions.totalWallArea,
@@ -209,16 +248,42 @@ final class RoomExporter {
             windows: windows
         )
 
+        // Create damage analysis data if available
+        var damageData: RoomExportData.DamageAnalysisData?
+        if let analysis = damageAnalysis {
+            let damages = analysis.detectedDamages.map { damage in
+                RoomExportData.DamageAnalysisData.DamageData(
+                    type: damage.type.rawValue,
+                    severity: damage.severity.rawValue,
+                    surfaceType: damage.surfaceType.rawValue,
+                    description: damage.description,
+                    confidence: damage.confidence,
+                    recommendation: damage.recommendation
+                )
+            }
+
+            damageData = RoomExportData.DamageAnalysisData(
+                analysisDate: analysis.analysisDate,
+                overallCondition: analysis.overallCondition.rawValue,
+                totalDamagesFound: analysis.detectedDamages.count,
+                criticalDamages: analysis.criticalCount,
+                highPriorityDamages: analysis.highPriorityCount,
+                damages: damages
+            )
+        }
+
         return RoomExportData(
             exportDate: Date(),
             roomDimensions: roomData,
-            surfaces: surfaces
+            surfaces: surfaces,
+            damageAnalysis: damageData
         )
     }
 
     private func generatePDFData(
         dimensions: CapturedRoomProcessor.RoomDimensions,
-        capturedRoom: CapturedRoom
+        capturedRoom: CapturedRoom,
+        damageAnalysis: DamageAnalysisResult? = nil
     ) -> Data {
         let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792) // US Letter
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
@@ -320,6 +385,88 @@ final class RoomExporter {
                 }
             }
 
+            // Damage Analysis Section
+            if let damage = damageAnalysis {
+                yOffset += 20
+
+                // Check if we need a new page
+                if yOffset > pageRect.height - 200 {
+                    context.beginPage()
+                    yOffset = 50
+                }
+
+                yOffset = drawSection(
+                    title: "Damage Assessment",
+                    at: yOffset,
+                    in: context.cgContext
+                )
+
+                // Overall condition
+                let conditionColor = damageConditionColor(damage.overallCondition)
+                yOffset = drawLabelValueWithColor(
+                    label: "Overall Condition",
+                    value: damage.overallCondition.displayName.uppercased(),
+                    at: yOffset,
+                    valueColor: conditionColor
+                )
+
+                yOffset = drawLabelValue(label: "Total Issues Found", value: "\(damage.detectedDamages.count)", at: yOffset)
+                yOffset = drawLabelValue(label: "Critical Issues", value: "\(damage.criticalCount)", at: yOffset)
+                yOffset = drawLabelValue(label: "High Priority", value: "\(damage.highPriorityCount)", at: yOffset)
+
+                yOffset += 10
+
+                // List damages by severity
+                let criticalDamages = damage.detectedDamages.filter { $0.severity == .critical }
+                let highDamages = damage.detectedDamages.filter { $0.severity == .high }
+                let moderateDamages = damage.detectedDamages.filter { $0.severity == .moderate }
+                let lowDamages = damage.detectedDamages.filter { $0.severity == .low }
+
+                if !criticalDamages.isEmpty {
+                    yOffset = drawDamageSection(
+                        title: "CRITICAL ISSUES",
+                        damages: criticalDamages,
+                        at: yOffset,
+                        color: .systemRed,
+                        context: context,
+                        pageRect: pageRect
+                    )
+                }
+
+                if !highDamages.isEmpty {
+                    yOffset = drawDamageSection(
+                        title: "HIGH PRIORITY",
+                        damages: highDamages,
+                        at: yOffset,
+                        color: .systemOrange,
+                        context: context,
+                        pageRect: pageRect
+                    )
+                }
+
+                if !moderateDamages.isEmpty {
+                    yOffset = drawDamageSection(
+                        title: "MODERATE",
+                        damages: moderateDamages,
+                        at: yOffset,
+                        color: .systemYellow,
+                        context: context,
+                        pageRect: pageRect
+                    )
+                }
+
+                if !lowDamages.isEmpty {
+                    yOffset = drawDamageSection(
+                        title: "LOW PRIORITY",
+                        damages: lowDamages,
+                        at: yOffset,
+                        color: .systemGreen,
+                        context: context,
+                        pageRect: pageRect
+                    )
+                }
+            }
+
             // Footer
             let footerY = pageRect.height - 40
             let footer = "Generated by Room Scanner App"
@@ -334,6 +481,107 @@ final class RoomExporter {
         }
 
         return data
+    }
+
+    private func damageConditionColor(_ condition: OverallCondition) -> UIColor {
+        switch condition {
+        case .excellent: return .systemGreen
+        case .good: return .systemBlue
+        case .fair: return .systemYellow
+        case .poor: return .systemOrange
+        case .critical: return .systemRed
+        }
+    }
+
+    private func drawLabelValueWithColor(label: String, value: String, at yOffset: CGFloat, valueColor: UIColor) -> CGFloat {
+        let labelFont = UIFont.systemFont(ofSize: 12)
+        let valueFont = UIFont.boldSystemFont(ofSize: 12)
+
+        label.draw(
+            at: CGPoint(x: 70, y: yOffset),
+            withAttributes: [.font: labelFont, .foregroundColor: UIColor.darkGray]
+        )
+
+        value.draw(
+            at: CGPoint(x: 250, y: yOffset),
+            withAttributes: [.font: valueFont, .foregroundColor: valueColor]
+        )
+
+        return yOffset + 20
+    }
+
+    private func drawDamageSection(
+        title: String,
+        damages: [DetectedDamage],
+        at yOffset: CGFloat,
+        color: UIColor,
+        context: UIGraphicsPDFRendererContext,
+        pageRect: CGRect
+    ) -> CGFloat {
+        var currentY = yOffset
+
+        // Check if we need a new page
+        if currentY > pageRect.height - 100 {
+            context.beginPage()
+            currentY = 50
+        }
+
+        // Section title with color indicator
+        let titleFont = UIFont.boldSystemFont(ofSize: 12)
+        title.draw(
+            at: CGPoint(x: 70, y: currentY),
+            withAttributes: [.font: titleFont, .foregroundColor: color]
+        )
+        currentY += 20
+
+        for (index, damage) in damages.prefix(5).enumerated() {
+            // Check if we need a new page
+            if currentY > pageRect.height - 80 {
+                context.beginPage()
+                currentY = 50
+            }
+
+            let damageTitle = "\(index + 1). \(damage.type.displayName) - \(damage.surfaceType.displayName)"
+            damageTitle.draw(
+                at: CGPoint(x: 90, y: currentY),
+                withAttributes: [.font: UIFont.boldSystemFont(ofSize: 11)]
+            )
+            currentY += 16
+
+            let description = damage.description
+            let descriptionRect = CGRect(x: 90, y: currentY, width: 450, height: 40)
+            description.draw(
+                in: descriptionRect,
+                withAttributes: [.font: UIFont.systemFont(ofSize: 10), .foregroundColor: UIColor.darkGray]
+            )
+            currentY += 35
+
+            if let recommendation = damage.recommendation {
+                let recText = "Recommendation: \(recommendation)"
+                let recRect = CGRect(x: 90, y: currentY, width: 450, height: 30)
+                recText.draw(
+                    in: recRect,
+                    withAttributes: [.font: UIFont.italicSystemFont(ofSize: 10), .foregroundColor: UIColor.gray]
+                )
+                currentY += 30
+            }
+
+            currentY += 5
+        }
+
+        if damages.count > 5 {
+            let moreText = "... and \(damages.count - 5) more \(title.lowercased()) items"
+            moreText.draw(
+                at: CGPoint(x: 90, y: currentY),
+                withAttributes: [
+                    .font: UIFont.italicSystemFont(ofSize: 10),
+                    .foregroundColor: UIColor.gray
+                ]
+            )
+            currentY += 18
+        }
+
+        return currentY + 10
     }
 
     private func drawSection(title: String, at yOffset: CGFloat, in context: CGContext) -> CGFloat {

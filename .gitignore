@@ -57,3 +57,6 @@ fastlane/test_output
 
 # Code Injection
 iOSInjectionProject/
+
+# API Keys
+GeminiAPIKey.plist

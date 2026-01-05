@@ -317,20 +317,36 @@ struct DamageAnalysisView: View {
         isAnalyzing = true
         errorMessage = nil
 
-        // If using manually selected images, add them to service
-        if autoCapturedPreviews.isEmpty && !loadedImages.isEmpty {
-            appState.damageAnalysisService.clearPendingImages()
-            for item in loadedImages {
-                appState.damageAnalysisService.addImageData(
-                    item.data,
-                    surfaceType: selectedSurfaceType
-                )
-            }
-        }
-        // Auto-captured images are already loaded in AppState.startDamageAnalysis()
-
         do {
-            let result = try await appState.damageAnalysisService.analyzeWithPendingImages()
+            let result: DamageAnalysisResult
+
+            // Check if we have captured frames with depth data (from ARSession during scan)
+            let capturedFrames = appState.frameCaptureService.capturedFrames
+            let framesWithDepth = capturedFrames.filter { $0.hasDepthData }
+
+            if !framesWithDepth.isEmpty {
+                // Use frames with depth for accurate size measurement
+                print("DamageAnalysisView: Analyzing \(framesWithDepth.count) frames with depth data")
+                result = try await appState.damageAnalysisService.analyzeWithFrames(framesWithDepth)
+            } else if !capturedFrames.isEmpty {
+                // Use captured frames without depth (screenshot fallback)
+                print("DamageAnalysisView: Analyzing \(capturedFrames.count) frames without depth")
+                result = try await appState.damageAnalysisService.analyzeWithFrames(capturedFrames)
+            } else if !loadedImages.isEmpty {
+                // Use manually selected images
+                appState.damageAnalysisService.clearPendingImages()
+                for item in loadedImages {
+                    appState.damageAnalysisService.addImageData(
+                        item.data,
+                        surfaceType: selectedSurfaceType
+                    )
+                }
+                result = try await appState.damageAnalysisService.analyzeWithPendingImages()
+            } else {
+                // Use auto-captured images from pending (legacy flow)
+                result = try await appState.damageAnalysisService.analyzeWithPendingImages()
+            }
+
             await MainActor.run {
                 isAnalyzing = false
                 appState.completeDamageAnalysis(with: result)

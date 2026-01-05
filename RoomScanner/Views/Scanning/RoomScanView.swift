@@ -5,7 +5,7 @@ import AVFoundation
 // MARK: - RoomCaptureViewController
 
 /// Room capture controller using Apple's RoomCaptureView for AR visualization
-/// Uses screenshot-based frame capture for damage analysis images
+/// Uses parallel ARSession to capture frames with LiDAR depth data for damage size measurement
 final class RoomCaptureViewController: UIViewController {
 
     // MARK: - Properties
@@ -14,11 +14,14 @@ final class RoomCaptureViewController: UIViewController {
     private let sessionConfig: RoomCaptureSession.Configuration
     private var isSessionRunning = false
 
-    // MARK: - Screenshot Capture
+    // MARK: - Frame Capture (Screenshots during scan)
+
+    weak var frameCaptureService: ARFrameCaptureService?
+
+    // MARK: - Screenshot Capture (Fallback for non-LiDAR devices)
 
     private var screenshotTimer: Timer?
     private let screenshotInterval: TimeInterval = 2.0
-    weak var frameCaptureService: ARFrameCaptureService?
 
     weak var delegate: RoomCaptureContainerDelegate? {
         didSet {

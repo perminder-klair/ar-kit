@@ -32,6 +32,7 @@
 		7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */; };
 		7E6C1D1B2F0C0284000AE92A /* ARFrameCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D1C2F0C0284000AE92A /* ARFrameCaptureService.swift */; };
 		7E6C1D1E2F0C0285000AE92A /* DamageSizeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D1D2F0C0285000AE92A /* DamageSizeCalculator.swift */; };
+		7E6C1D242F0C0286000AE92A /* DepthCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D232F0C0286000AE92A /* DepthCaptureView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +62,7 @@
 		7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageDetailView.swift; sourceTree = "<group>"; };
 		7E6C1D1C2F0C0284000AE92A /* ARFrameCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARFrameCaptureService.swift; sourceTree = "<group>"; };
 		7E6C1D1D2F0C0285000AE92A /* DamageSizeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageSizeCalculator.swift; sourceTree = "<group>"; };
+		7E6C1D232F0C0286000AE92A /* DepthCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthCaptureView.swift; sourceTree = "<group>"; };
 		7EA7734F2F0BE7FA00907D2C /* FixzyRoomScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FixzyRoomScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -113,6 +115,7 @@
 				7E6C1D082F0C0283000AE92A /* DamageAnalysisView.swift */,
 				7E6C1D092F0C0283000AE92A /* DamageResultsView.swift */,
 				7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */,
+				7E6C1D232F0C0286000AE92A /* DepthCaptureView.swift */,
 			);
 			path = DamageDetection;
 			sourceTree = "<group>";
@@ -332,6 +335,7 @@
 				7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */,
 				7E6C1D1B2F0C0284000AE92A /* ARFrameCaptureService.swift in Sources */,
 				7E6C1D1E2F0C0285000AE92A /* DamageSizeCalculator.swift in Sources */,
+				7E6C1D242F0C0286000AE92A /* DepthCaptureView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

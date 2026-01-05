@@ -58,21 +58,17 @@ struct DimensionsView: View {
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 12) {
-                // Damage Analysis Button
+                // Damage Analysis Button - goes to depth capture first
                 Button {
-                    appState.startDamageAnalysis()
+                    appState.startDepthCapture()
                 } label: {
                     HStack {
-                        Image(systemName: "wand.and.stars")
-                        if appState.capturedFrameCount > 0 {
-                            Text("Analyze for Damage (\(appState.capturedFrameCount) images)")
-                        } else {
-                            Text("Analyze for Damage")
-                        }
+                        Image(systemName: "camera.viewfinder")
+                        Text("Capture for Damage Analysis")
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(appState.capturedFrameCount > 0 ? Color.green : Color.orange)
+                    .background(Color.orange)
                     .foregroundColor(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }

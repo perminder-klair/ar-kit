@@ -19,6 +19,8 @@ struct ContentView: View {
                     } else {
                         ErrorView(message: "No room data available")
                     }
+                case .depthCapture:
+                    DepthCaptureView()
                 case .damageAnalysis:
                     DamageAnalysisView()
 

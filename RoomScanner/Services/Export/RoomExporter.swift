@@ -75,6 +75,11 @@ final class RoomExporter {
                 let description: String
                 let confidence: Float
                 let recommendation: String?
+                // Size measurements (from LiDAR depth)
+                let widthM: Float?
+                let heightM: Float?
+                let areaM2: Float?
+                let distanceM: Float?
             }
         }
     }
@@ -258,7 +263,11 @@ final class RoomExporter {
                     surfaceType: damage.surfaceType.rawValue,
                     description: damage.description,
                     confidence: damage.confidence,
-                    recommendation: damage.recommendation
+                    recommendation: damage.recommendation,
+                    widthM: damage.realWidth,
+                    heightM: damage.realHeight,
+                    areaM2: damage.realArea,
+                    distanceM: damage.distanceFromCamera
                 )
             }
 
@@ -547,6 +556,16 @@ final class RoomExporter {
                 withAttributes: [.font: UIFont.boldSystemFont(ofSize: 11)]
             )
             currentY += 16
+
+            // Show size measurements if available
+            if damage.hasMeasurements, let dimensions = damage.formattedDimensions, let area = damage.formattedArea {
+                let sizeText = "Size: \(dimensions) (\(area))"
+                sizeText.draw(
+                    at: CGPoint(x: 90, y: currentY),
+                    withAttributes: [.font: UIFont.boldSystemFont(ofSize: 10), .foregroundColor: UIColor.systemBlue]
+                )
+                currentY += 14
+            }
 
             let description = damage.description
             let descriptionRect = CGRect(x: 90, y: currentY, width: 450, height: 40)

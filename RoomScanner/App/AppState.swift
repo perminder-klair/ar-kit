@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
         case scanning
         case processing
         case dimensions
+        case depthCapture    // Capture depth frames for damage size measurement
         case damageAnalysis
         case damageResults
         case report
@@ -65,6 +66,14 @@ final class AppState: ObservableObject {
     func cancelScan() {
         isScanning = false
         navigateTo(.home)
+    }
+
+    // MARK: - Depth Capture Methods
+
+    func startDepthCapture() {
+        // Clear any previous frames for fresh capture
+        frameCaptureService.clearFrames()
+        navigateTo(.depthCapture)
     }
 
     // MARK: - Damage Analysis Methods

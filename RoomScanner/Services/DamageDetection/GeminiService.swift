@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import UIKit
-import Combine
 
 /// Service for interacting with Google Gemini Vision API
 @MainActor
@@ -66,8 +66,8 @@ final class GeminiService: ObservableObject {
     // MARK: - Configuration
 
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta"
-    private let model = "gemini-2.0-flash"
-    private let maxImageSizeBytes = 20 * 1024 * 1024 // 20MB
+    private let model = "gemini-3-flash-preview"
+    private let maxImageSizeBytes = 20 * 1024 * 1024  // 20MB
     private let session: URLSession
 
     private var apiKey: String? {
@@ -86,7 +86,9 @@ final class GeminiService: ObservableObject {
     // MARK: - Public API
 
     /// Analyze a single image for damage
-    func analyzeImage(_ imageData: Data, surfaceType: SurfaceType) async throws -> DamageAnalysisResponse {
+    func analyzeImage(_ imageData: Data, surfaceType: SurfaceType) async throws
+        -> DamageAnalysisResponse
+    {
         guard let apiKey = apiKey, !apiKey.isEmpty else {
             throw GeminiError.invalidAPIKey
         }
@@ -122,26 +124,28 @@ final class GeminiService: ObservableObject {
         for (index, image) in images.enumerated() {
             do {
                 let response = try await analyzeImage(image.data, surfaceType: image.surfaceType)
-                results.append(ImageAnalysisResult(
-                    imageIndex: index,
-                    surfaceType: image.surfaceType,
-                    surfaceId: image.surfaceId,
-                    response: response,
-                    error: nil
-                ))
+                results.append(
+                    ImageAnalysisResult(
+                        imageIndex: index,
+                        surfaceType: image.surfaceType,
+                        surfaceId: image.surfaceId,
+                        response: response,
+                        error: nil
+                    ))
             } catch {
-                results.append(ImageAnalysisResult(
-                    imageIndex: index,
-                    surfaceType: image.surfaceType,
-                    surfaceId: image.surfaceId,
-                    response: nil,
-                    error: error
-                ))
+                results.append(
+                    ImageAnalysisResult(
+                        imageIndex: index,
+                        surfaceType: image.surfaceType,
+                        surfaceId: image.surfaceId,
+                        response: nil,
+                        error: error
+                    ))
             }
 
             // Rate limiting delay between requests
             if index < images.count - 1 {
-                try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+                try await Task.sleep(nanoseconds: 500_000_000)  // 0.5 second
             }
         }
 
@@ -150,7 +154,8 @@ final class GeminiService: ObservableObject {
 
     // MARK: - Private Methods
 
-    private func buildRequest(imageData: Data, prompt: String, apiKey: String) throws -> URLRequest {
+    private func buildRequest(imageData: Data, prompt: String, apiKey: String) throws -> URLRequest
+    {
         let urlString = "\(baseURL)/models/\(model):generateContent?key=\(apiKey)"
         guard let url = URL(string: urlString) else {
             throw GeminiError.invalidResponse
@@ -168,7 +173,7 @@ final class GeminiService: ObservableObject {
                 GeminiContent(
                     parts: [
                         GeminiPart.inlineData(InlineData(mimeType: mimeType, data: base64Image)),
-                        GeminiPart.text(prompt)
+                        GeminiPart.text(prompt),
                     ]
                 )
             ],
@@ -222,7 +227,9 @@ final class GeminiService: ObservableObject {
         return errorResponse?.error?.message
     }
 
-    private func parseAnalysisResponse(_ text: String, surfaceType: SurfaceType) throws -> DamageAnalysisResponse {
+    private func parseAnalysisResponse(_ text: String, surfaceType: SurfaceType) throws
+        -> DamageAnalysisResponse
+    {
         // Clean up the response text (remove markdown code blocks if present)
         var cleanedText = text
         if cleanedText.hasPrefix("```json") {
@@ -347,7 +354,8 @@ enum GeminiPart: Codable {
             self = .inlineData(inlineData)
         } else {
             throw DecodingError.dataCorrupted(
-                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Invalid part")
+                DecodingError.Context(
+                    codingPath: decoder.codingPath, debugDescription: "Invalid part")
             )
         }
     }

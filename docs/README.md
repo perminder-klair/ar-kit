@@ -1,6 +1,6 @@
 # Room Scanner App
 
-iOS app using Apple's **RoomPlan API** with LiDAR for room scanning and dimensions, plus **CoreML** for damage detection.
+iOS app using Apple's **RoomPlan API** with LiDAR for room scanning and dimensions, plus **Gemini Vision AI** for damage detection with real-world size measurement.
 
 ## Quick Links
 
@@ -8,10 +8,11 @@ iOS app using Apple's **RoomPlan API** with LiDAR for room scanning and dimensio
 - [Implementation Status](./IMPLEMENTATION_STATUS.md)
 - [API Reference](./API_REFERENCE.md)
 - [Setup Guide](./SETUP_GUIDE.md)
+- [Damage Detection](./DAMAGE_DETECTION.md) - How AI damage detection and LiDAR size measurement works
 
 ## Features
 
-### Completed (Phase 1-4)
+### Completed
 - Room scanning with LiDAR using RoomPlan API
 - Real-time scan progress (walls, doors, windows detected)
 - Dimension extraction (floor area, wall area, ceiling height, volume)
@@ -20,12 +21,14 @@ iOS app using Apple's **RoomPlan API** with LiDAR for room scanning and dimensio
 - Export to USDZ (3D model for AR Quick Look)
 - Export to JSON (machine-readable data)
 - Export to PDF (printable report)
-
-### Planned (Phase 5-6)
-- AI damage detection (cracks, water damage, holes)
-- 3D damage localization
-- Damage severity scoring
-- Enhanced reports with damage findings
+- **AI Damage Detection** (Gemini Vision API)
+  - Detects cracks, water damage, mold, holes, weathering, stains
+  - Severity scoring (low, moderate, high, critical)
+  - Repair recommendations
+- **LiDAR Size Measurement**
+  - Real-world damage dimensions (width × height)
+  - Area calculation (cm² or m²)
+  - Uses depth data + pinhole camera model
 
 ## Requirements
 

@@ -54,12 +54,5 @@
     <string>Photo library access is needed to save exported room scans and reports.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Photo library access is needed to save and share room scan exports.</string>
-
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>armv7</string>
-        <string>arkit</string>
-        <string>lidar</string>
-    </array>
 </dict>
 </plist>

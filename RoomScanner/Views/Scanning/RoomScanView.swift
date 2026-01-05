@@ -1,7 +1,101 @@
 import SwiftUI
 import RoomPlan
+import AVFoundation
 
-// MARK: - Top-level Delegate Class
+// MARK: - RoomCaptureViewController
+
+final class RoomCaptureViewController: UIViewController {
+    private var roomCaptureView: RoomCaptureView!
+    private let sessionConfig: RoomCaptureSession.Configuration
+    private var isSessionRunning = false
+
+    weak var delegate: RoomCaptureContainerDelegate? {
+        didSet {
+            // Update delegates if view already exists
+            if roomCaptureView != nil {
+                roomCaptureView.captureSession.delegate = delegate
+                roomCaptureView.delegate = delegate
+            }
+        }
+    }
+
+    init(configuration: RoomCaptureSession.Configuration) {
+        self.sessionConfig = configuration
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupRoomCaptureView()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Auto-start session when view appears to initialize video pipeline
+        startSession()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        stopSession()
+    }
+
+    private func setupRoomCaptureView() {
+        // Create RoomCaptureView with the view's bounds (proper sizing)
+        roomCaptureView = RoomCaptureView(frame: view.bounds)
+        roomCaptureView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        // Set delegates immediately after creation
+        roomCaptureView.captureSession.delegate = delegate
+        roomCaptureView.delegate = delegate
+
+        // Add to view hierarchy - this allows Metal/video pipeline to initialize
+        view.addSubview(roomCaptureView)
+    }
+
+    func startSession() {
+        guard !isSessionRunning else { return }
+        isSessionRunning = true
+        roomCaptureView.captureSession.run(configuration: sessionConfig)
+    }
+
+    func stopSession() {
+        guard isSessionRunning else { return }
+        isSessionRunning = false
+        roomCaptureView.captureSession.stop()
+    }
+}
+
+// MARK: - UIViewControllerRepresentable Wrapper
+
+struct RoomCaptureViewControllerRepresentable: UIViewControllerRepresentable {
+    let configuration: RoomCaptureSession.Configuration
+    let delegate: RoomCaptureContainerDelegate
+    var onViewControllerCreated: ((RoomCaptureViewController) -> Void)?
+
+    func makeUIViewController(context: Context) -> RoomCaptureViewController {
+        let viewController = RoomCaptureViewController(configuration: configuration)
+        viewController.delegate = delegate
+
+        // Provide reference back to SwiftUI
+        DispatchQueue.main.async {
+            onViewControllerCreated?(viewController)
+        }
+
+        return viewController
+    }
+
+    func updateUIViewController(_ uiViewController: RoomCaptureViewController, context: Context) {
+        // Update delegate reference if needed
+        uiViewController.delegate = delegate
+    }
+}
+
+// MARK: - Delegate Class
 
 final class RoomCaptureContainerDelegate: NSObject, RoomCaptureViewDelegate, RoomCaptureSessionDelegate {
     var appState: AppState?
@@ -66,47 +160,94 @@ final class RoomCaptureContainerDelegate: NSObject, RoomCaptureViewDelegate, Roo
 struct RoomScanView: View {
     @EnvironmentObject var appState: AppState
     @State private var showCancelAlert = false
-    @State private var captureView: RoomCaptureView?
     @State private var delegate = RoomCaptureContainerDelegate()
+    @State private var viewController: RoomCaptureViewController?
+    @State private var cameraPermissionGranted = false
+    @State private var permissionChecked = false
 
     var body: some View {
         ZStack {
-            // RoomPlan Camera View
-            RoomCaptureViewContainer(
+            // ALWAYS render RoomCaptureView so video pipeline initializes
+            RoomCaptureViewControllerRepresentable(
                 configuration: appState.roomCaptureService.createConfiguration(),
                 delegate: delegate,
-                onViewCreated: { view in
-                    captureView = view
+                onViewControllerCreated: { vc in
+                    viewController = vc
                 }
             )
             .ignoresSafeArea()
 
-            // Overlay UI
-            VStack {
-                // Top status bar
-                ScanStatusBar(
-                    detectedItems: appState.roomCaptureService.detectedItems
-                )
-                .padding(.top, 60)
-                .padding(.horizontal)
+            // Permission overlay (shown on top when permission not granted)
+            if !cameraPermissionGranted && permissionChecked {
+                Color.black.opacity(0.95)
+                    .ignoresSafeArea()
 
-                Spacer()
+                VStack(spacing: 20) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.white.opacity(0.7))
+                    Text("Camera Access Required")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                    Text("Room scanning requires camera access to capture your space using LiDAR.")
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.horizontal, 40)
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 10)
 
-                // Bottom controls
-                ScanControlsView(
-                    isScanning: appState.isScanning,
-                    onStart: startScanning,
-                    onStop: stopScanning,
-                    onCancel: { showCancelAlert = true }
-                )
-                .padding(.bottom, 40)
-                .padding(.horizontal)
+                    Button("Check Again") {
+                        checkCameraPermission()
+                    }
+                    .foregroundColor(.white.opacity(0.7))
+                }
+                .padding()
+            }
+
+            // Loading overlay
+            if !permissionChecked {
+                Color.black.opacity(0.95)
+                    .ignoresSafeArea()
+                ProgressView("Checking camera access...")
+                    .tint(.white)
+                    .foregroundColor(.white)
+            }
+
+            // Controls overlay (shown when permission granted)
+            if cameraPermissionGranted {
+                VStack {
+                    // Top status bar
+                    ScanStatusBar(
+                        detectedItems: appState.roomCaptureService.detectedItems
+                    )
+                    .padding(.top, 60)
+                    .padding(.horizontal)
+
+                    Spacer()
+
+                    // Bottom controls
+                    ScanControlsView(
+                        isScanning: appState.isScanning,
+                        onStart: startScanning,
+                        onStop: stopScanning,
+                        onCancel: { showCancelAlert = true }
+                    )
+                    .padding(.bottom, 40)
+                    .padding(.horizontal)
+                }
             }
         }
         .navigationBarHidden(true)
         .alert("Cancel Scan?", isPresented: $showCancelAlert) {
             Button("Continue Scanning", role: .cancel) { }
             Button("Cancel", role: .destructive) {
+                viewController?.stopSession()
                 appState.cancelScan()
             }
         } message: {
@@ -114,7 +255,30 @@ struct RoomScanView: View {
         }
         .onAppear {
             delegate.appState = appState
-            // Don't auto-start - wait for view to be ready and user to press button
+            checkCameraPermission()
+        }
+    }
+
+    private func checkCameraPermission() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            cameraPermissionGranted = true
+            permissionChecked = true
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    cameraPermissionGranted = granted
+                    permissionChecked = true
+                    if !granted {
+                        appState.scanError = "Camera access is required for room scanning"
+                    }
+                }
+            }
+        case .denied, .restricted:
+            cameraPermissionGranted = false
+            permissionChecked = true
+        @unknown default:
+            permissionChecked = true
         }
     }
 
@@ -123,44 +287,11 @@ struct RoomScanView: View {
             appState.scanError = "RoomPlan not supported on this device"
             return
         }
-        guard let view = captureView else {
-            // View not ready yet - will be called when user taps button
-            return
-        }
-        view.captureSession.run(
-            configuration: appState.roomCaptureService.createConfiguration()
-        )
+        viewController?.startSession()
     }
 
     private func stopScanning() {
-        captureView?.captureSession.stop()
-    }
-}
-
-// MARK: - RoomCaptureViewContainer
-
-struct RoomCaptureViewContainer: UIViewRepresentable {
-    @EnvironmentObject var appState: AppState
-    let configuration: RoomCaptureSession.Configuration
-    let delegate: RoomCaptureContainerDelegate
-    var onViewCreated: ((RoomCaptureView) -> Void)?
-
-    func makeUIView(context: Context) -> RoomCaptureView {
-        delegate.appState = appState
-
-        let view = RoomCaptureView(frame: .zero)
-        view.captureSession.delegate = delegate
-        view.delegate = delegate
-        onViewCreated?(view)
-        return view
-    }
-
-    func updateUIView(_ uiView: RoomCaptureView, context: Context) {
-        delegate.appState = appState
-    }
-
-    func makeCoordinator() -> Void {
-        // No coordinator needed - using external delegate
+        viewController?.stopSession()
     }
 }
 

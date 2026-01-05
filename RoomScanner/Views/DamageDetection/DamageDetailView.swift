@@ -21,6 +21,11 @@ struct DamageDetailView: View {
                     recommendationSection(recommendation)
                 }
 
+                // Size measurements (if available)
+                if damage.hasMeasurements {
+                    measurementsSection
+                }
+
                 // Technical info
                 technicalSection
             }
@@ -78,6 +83,52 @@ struct DamageDetailView: View {
                 .padding()
                 .background(Color.yellow.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private var measurementsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "ruler")
+                    .foregroundColor(.blue)
+                Text("Size Measurements")
+                    .font(.headline)
+            }
+
+            VStack(spacing: 8) {
+                if let area = damage.formattedArea {
+                    HStack {
+                        Text("Area")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(area)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.blue)
+                    }
+                }
+
+                if let dimensions = damage.formattedDimensions {
+                    DamageInfoRow(label: "Dimensions", value: dimensions)
+                }
+
+                if let distance = damage.distanceFromCamera {
+                    DamageInfoRow(
+                        label: "Distance from camera",
+                        value: String(format: "%.1f m", distance)
+                    )
+                }
+
+                if let confidence = damage.measurementConfidence {
+                    DamageInfoRow(
+                        label: "Measurement accuracy",
+                        value: "\(Int(confidence * 100))%"
+                    )
+                }
+            }
+            .padding()
+            .background(Color.blue.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
@@ -141,7 +192,7 @@ extension DamageSeverity {
     }
 }
 
-#Preview {
+#Preview("Without Measurements") {
     NavigationStack {
         DamageDetailView(damage: DetectedDamage(
             type: .crack,
@@ -150,6 +201,24 @@ extension DamageSeverity {
             surfaceType: .wall,
             confidence: 0.92,
             recommendation: "This crack should be inspected by a professional to determine if it's structural. Consider filling with appropriate filler for cosmetic repair if non-structural."
+        ))
+    }
+}
+
+#Preview("With Measurements") {
+    NavigationStack {
+        DamageDetailView(damage: DetectedDamage(
+            type: .waterDamage,
+            severity: .moderate,
+            description: "Water stain on ceiling with visible discoloration and potential mold growth around edges.",
+            surfaceType: .ceiling,
+            confidence: 0.88,
+            recommendation: "Identify and fix the source of water leak. Clean affected area with mold treatment solution.",
+            realWidth: 0.32,
+            realHeight: 0.18,
+            realArea: 0.0576,
+            distanceFromCamera: 2.1,
+            measurementConfidence: 0.92
         ))
     }
 }

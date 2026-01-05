@@ -65,6 +65,11 @@ final class DamageAnalysisService: ObservableObject {
 
     private let geminiService = GeminiService()
     private let imageCaptureHelper = ImageCaptureHelper()
+    private let sizeCalculator = DamageSizeCalculator()
+
+    // MARK: - Frame Storage for Size Calculation
+
+    private var capturedFramesForAnalysis: [CapturedFrame] = []
 
     // MARK: - Configuration
 
@@ -181,6 +186,54 @@ final class DamageAnalysisService: ObservableObject {
         return updatedResult
     }
 
+    /// Analyze with captured frames that include depth data for damage size calculation
+    func analyzeWithFrames(_ frames: [CapturedFrame]) async throws -> DamageAnalysisResult {
+        guard isConfigured else {
+            throw DamageAnalysisError.notConfigured
+        }
+
+        guard !frames.isEmpty else {
+            throw DamageAnalysisError.noImagesProvided
+        }
+
+        // Store frames for size calculation during processing
+        capturedFramesForAnalysis = frames
+
+        let startTime = Date()
+        status = .analyzing(progress: 0)
+
+        // Convert frames to image data for Gemini analysis
+        let images = frames.map { frame in
+            CapturedImageData(
+                data: frame.imageData,
+                surfaceType: .wall,  // Default to wall
+                surfaceId: nil
+            )
+        }
+
+        // Analyze images
+        let results = try await analyzeImagesWithProgress(images)
+
+        // Process results with depth-based size calculation
+        let (detectedDamages, overallCondition) = processResultsWithFrames(results)
+
+        let processingTime = Date().timeIntervalSince(startTime)
+
+        let result = DamageAnalysisResult(
+            roomScanId: nil,
+            detectedDamages: detectedDamages,
+            overallCondition: overallCondition,
+            analyzedImageCount: frames.count,
+            processingTimeSeconds: processingTime
+        )
+
+        self.analysisResult = result
+        self.status = .completed
+        self.capturedFramesForAnalysis.removeAll()
+
+        return result
+    }
+
     /// Reset the service state
     func reset() {
         status = .idle
@@ -266,6 +319,43 @@ final class DamageAnalysisService: ObservableObject {
         return (allDamages, overallCondition)
     }
 
+    /// Process results with frame depth data for damage size calculation
+    private func processResultsWithFrames(_ results: [ImageAnalysisResult]) -> ([DetectedDamage], OverallCondition) {
+        var allDamages: [DetectedDamage] = []
+        var conditions: [OverallCondition] = []
+
+        for result in results where result.isSuccess {
+            guard let response = result.response else { continue }
+
+            // Get the corresponding frame for depth data
+            let frame: CapturedFrame? = result.imageIndex < capturedFramesForAnalysis.count
+                ? capturedFramesForAnalysis[result.imageIndex]
+                : nil
+
+            // Convert damage items to DetectedDamage with size calculation
+            for damageItem in response.damages {
+                let damage = convertToDamageWithSize(
+                    damageItem,
+                    surfaceType: result.surfaceType,
+                    surfaceId: result.surfaceId,
+                    imageIndex: result.imageIndex,
+                    frame: frame
+                )
+                allDamages.append(damage)
+            }
+
+            // Track conditions for overall assessment
+            if let condition = OverallCondition(rawValue: response.overallCondition) {
+                conditions.append(condition)
+            }
+        }
+
+        // Determine overall condition (worst case)
+        let overallCondition = determineOverallCondition(from: conditions, damages: allDamages)
+
+        return (allDamages, overallCondition)
+    }
+
     private func convertToDamage(
         _ item: DamageAnalysisResponse.DamageItem,
         surfaceType: SurfaceType,
@@ -295,6 +385,77 @@ final class DamageAnalysisService: ObservableObject {
             boundingBox: boundingBox,
             recommendation: item.recommendation,
             imageIndex: imageIndex
+        )
+    }
+
+    /// Convert damage item to DetectedDamage with real-world size calculation using depth data
+    private func convertToDamageWithSize(
+        _ item: DamageAnalysisResponse.DamageItem,
+        surfaceType: SurfaceType,
+        surfaceId: UUID?,
+        imageIndex: Int,
+        frame: CapturedFrame?
+    ) -> DetectedDamage {
+        let damageType = DamageType(rawValue: item.type) ?? .other
+        let severity = DamageSeverity(rawValue: item.severity) ?? .low
+
+        var boundingBox: DamageBoundingBox?
+        if let box = item.boundingBox {
+            boundingBox = DamageBoundingBox(
+                x: box.x,
+                y: box.y,
+                width: box.width,
+                height: box.height
+            )
+        }
+
+        // Calculate real-world dimensions if we have depth data and a bounding box
+        var realWidth: Float?
+        var realHeight: Float?
+        var realArea: Float?
+        var distanceFromCamera: Float?
+        var measurementConfidence: Float?
+
+        if let bbox = boundingBox,
+           let frame = frame,
+           frame.hasDepthData,
+           let depthData = frame.depthData,
+           let intrinsics = frame.cameraIntrinsics {
+
+            if let dimensions = sizeCalculator.calculateSize(
+                boundingBox: bbox,
+                depthData: depthData,
+                depthWidth: frame.depthWidth,
+                depthHeight: frame.depthHeight,
+                cameraIntrinsics: intrinsics,
+                imageWidth: frame.imageWidth,
+                imageHeight: frame.imageHeight
+            ) {
+                realWidth = dimensions.width
+                realHeight = dimensions.height
+                realArea = dimensions.area
+                distanceFromCamera = dimensions.depth
+                measurementConfidence = dimensions.confidence
+
+                print("DamageAnalysisService: Calculated size for \(damageType.displayName): \(dimensions.formattedDimensions) (\(dimensions.formattedArea))")
+            }
+        }
+
+        return DetectedDamage(
+            type: damageType,
+            severity: severity,
+            description: item.description,
+            surfaceType: surfaceType,
+            surfaceId: surfaceId,
+            confidence: item.confidence,
+            boundingBox: boundingBox,
+            recommendation: item.recommendation,
+            imageIndex: imageIndex,
+            realWidth: realWidth,
+            realHeight: realHeight,
+            realArea: realArea,
+            distanceFromCamera: distanceFromCamera,
+            measurementConfidence: measurementConfidence
         )
     }
 

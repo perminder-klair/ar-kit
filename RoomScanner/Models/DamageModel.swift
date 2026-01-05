@@ -133,6 +133,13 @@ struct DetectedDamage: Identifiable, Codable {
     let recommendation: String?
     let imageIndex: Int            // Index of source image in analysis
 
+    // Real-world dimensions (calculated from LiDAR depth)
+    let realWidth: Float?          // meters
+    let realHeight: Float?         // meters
+    let realArea: Float?           // square meters
+    let distanceFromCamera: Float? // meters
+    let measurementConfidence: Float?  // 0.0 - 1.0
+
     init(
         id: UUID = UUID(),
         type: DamageType,
@@ -143,7 +150,12 @@ struct DetectedDamage: Identifiable, Codable {
         confidence: Float,
         boundingBox: DamageBoundingBox? = nil,
         recommendation: String? = nil,
-        imageIndex: Int = 0
+        imageIndex: Int = 0,
+        realWidth: Float? = nil,
+        realHeight: Float? = nil,
+        realArea: Float? = nil,
+        distanceFromCamera: Float? = nil,
+        measurementConfidence: Float? = nil
     ) {
         self.id = id
         self.type = type
@@ -155,6 +167,46 @@ struct DetectedDamage: Identifiable, Codable {
         self.boundingBox = boundingBox
         self.recommendation = recommendation
         self.imageIndex = imageIndex
+        self.realWidth = realWidth
+        self.realHeight = realHeight
+        self.realArea = realArea
+        self.distanceFromCamera = distanceFromCamera
+        self.measurementConfidence = measurementConfidence
+    }
+
+    /// Whether real-world dimensions are available
+    var hasMeasurements: Bool {
+        realWidth != nil && realHeight != nil && realArea != nil
+    }
+
+    /// Formatted area in appropriate unit (cm² or m²)
+    var formattedArea: String? {
+        guard let area = realArea else { return nil }
+        if area < 0.01 {
+            return String(format: "%.1f cm²", area * 10000)
+        } else if area < 1.0 {
+            return String(format: "%.0f cm²", area * 10000)
+        } else {
+            return String(format: "%.2f m²", area)
+        }
+    }
+
+    /// Formatted dimensions as "W × H" in appropriate unit
+    var formattedDimensions: String? {
+        guard let width = realWidth, let height = realHeight else { return nil }
+        let w = formatLength(width)
+        let h = formatLength(height)
+        return "\(w) × \(h)"
+    }
+
+    private func formatLength(_ meters: Float) -> String {
+        if meters < 0.01 {
+            return String(format: "%.1f mm", meters * 1000)
+        } else if meters < 1.0 {
+            return String(format: "%.1f cm", meters * 100)
+        } else {
+            return String(format: "%.2f m", meters)
+        }
     }
 }
 

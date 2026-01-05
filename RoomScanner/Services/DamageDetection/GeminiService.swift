@@ -278,6 +278,15 @@ final class GeminiService: ObservableObject {
         - Stains (discoloration, marks)
         - Structural damage (warping, buckling, sagging)
 
+        IMPORTANT - Bounding Box Instructions:
+        For each damage found, provide a PRECISE bounding box that tightly fits ONLY the damaged area:
+        - x: left edge position as fraction of image width (0.0-1.0)
+        - y: top edge position as fraction of image height (0.0-1.0)
+        - width: damage width as fraction of image width (0.0-1.0)
+        - height: damage height as fraction of image height (0.0-1.0)
+        The bounding box should closely outline the damage boundaries, NOT include surrounding context.
+        This is critical for accurate damage size measurement.
+
         Respond with a JSON object in this exact format:
         {
             "damages": [

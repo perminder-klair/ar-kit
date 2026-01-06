@@ -1,0 +1,103 @@
+{
+  "damageAnalysis" : {
+    "analysisDate" : "2026-01-06T00:06:15Z",
+    "criticalDamages" : 0,
+    "damages" : [
+      {
+        "areaM2" : 0.00096839474,
+        "confidence" : 0.9,
+        "description" : "A small hole or puncture in the ceiling surface.",
+        "distanceM" : 1.1367188,
+        "heightM" : 0.025751503,
+        "recommendation" : "Fill with spackle, sand, and repaint to match the ceiling.",
+        "severity" : "low",
+        "surfaceType" : "wall",
+        "type" : "hole",
+        "widthM" : 0.037605368
+      },
+      {
+        "areaM2" : 0.1848511,
+        "confidence" : 0.85,
+        "description" : "Minor separation or settlement cracking along the joint between the door frame and the wall\/ceiling.",
+        "distanceM" : 1.7900391,
+        "heightM" : 0.09848339,
+        "recommendation" : "Apply paintable flexible caulk to the joint and repaint for a seamless finish.",
+        "severity" : "low",
+        "surfaceType" : "wall",
+        "type" : "crack",
+        "widthM" : 1.8769773
+      },
+      {
+        "areaM2" : 0.007180945,
+        "confidence" : 0.8,
+        "description" : "Dark smudges or dirt marks on the wall above the leftmost door hinge.",
+        "distanceM" : 1.6308594,
+        "heightM" : 0.05277984,
+        "recommendation" : "Clean with a mild detergent; if staining persists, apply a small amount of touch-up paint.",
+        "severity" : "low",
+        "surfaceType" : "wall",
+        "type" : "stain",
+        "widthM" : 0.1360547
+      },
+      {
+        "areaM2" : 0.10395575,
+        "confidence" : 0.8,
+        "description" : "Dark spotting along the bottom edge near the trim, which may indicate mold or mildew growth due to moisture accumulation.",
+        "distanceM" : 1.4179688,
+        "heightM" : 0.06385895,
+        "recommendation" : "Clean the area with a mold-killing solution and monitor for moisture or leaks.",
+        "severity" : "low",
+        "surfaceType" : "wall",
+        "type" : "mold",
+        "widthM" : 1.6278964
+      }
+    ],
+    "highPriorityDamages" : 0,
+    "overallCondition" : "good",
+    "totalDamagesFound" : 4
+  },
+  "exportDate" : "2026-01-06T00:06:26Z",
+  "roomDimensions" : {
+    "ceilingHeightM" : 2.34,
+    "floorAreaM2" : 0,
+    "volumeM3" : 0,
+    "wallAreaM2" : 9.79887
+  },
+  "surfaces" : {
+    "doors" : [
+      {
+        "areaM2" : 1.6684346,
+        "heightM" : 2.057792,
+        "id" : "D51B0243-3FEC-4822-9031-F48329A066E6",
+        "type" : "door",
+        "widthM" : 0.81078875
+      }
+    ],
+    "walls" : [
+      {
+        "areaM2" : 4.1610117,
+        "heightM" : 2.34,
+        "id" : "5B3E36D3-10E8-4B09-B40D-4203B43D3B0F",
+        "isCurved" : false,
+        "widthM" : 1.7782102
+      },
+      {
+        "areaM2" : 3.2640824,
+        "heightM" : 2.34,
+        "id" : "903F42D8-4C2E-4343-91EA-9BB6DFFF4098",
+        "isCurved" : false,
+        "widthM" : 1.3949071
+      },
+      {
+        "areaM2" : 2.3737755,
+        "heightM" : 2.34,
+        "id" : "7AF73FE4-17EB-4CAD-A578-1D7A25813CD0",
+        "isCurved" : false,
+        "widthM" : 1.014434
+      }
+    ],
+    "windows" : [
+
+    ]
+  }
+}

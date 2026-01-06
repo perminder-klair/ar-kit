@@ -3,14 +3,13 @@ import ARKit
 import RealityKit
 
 /// View for capturing depth frames with LiDAR after room scanning
-/// Used to capture accurate depth data for damage size measurement
+/// User manually captures photos when they see damage
 struct DepthCaptureView: View {
     @EnvironmentObject var appState: AppState
     @State private var capturedCount = 0
-    @State private var isCapturing = false
     @State private var showInstructions = true
-
-    private let targetFrameCount = 15
+    @State private var viewController: DepthCaptureARViewController?
+    @State private var showCaptureFlash = false
 
     var body: some View {
         ZStack {
@@ -20,9 +19,18 @@ struct DepthCaptureView: View {
                 onFrameCaptured: {
                     capturedCount = appState.frameCaptureService.frameCount
                 },
-                isCapturing: $isCapturing
+                onViewControllerCreated: { vc in
+                    viewController = vc
+                }
             )
             .ignoresSafeArea()
+
+            // Capture flash effect
+            if showCaptureFlash {
+                Color.white
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+            }
 
             // UI Overlay
             VStack {
@@ -37,6 +45,17 @@ struct DepthCaptureView: View {
                 if showInstructions {
                     instructionsOverlay
                         .transition(.opacity)
+                }
+
+                // Hint text when capturing
+                if !showInstructions {
+                    Text("Point at damage, then tap capture")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.5))
+                        .cornerRadius(20)
                 }
 
                 Spacer()
@@ -57,11 +76,11 @@ struct DepthCaptureView: View {
 
     private var captureStatusBar: some View {
         HStack(spacing: 16) {
-            // Capture progress
+            // Photo count
             HStack(spacing: 8) {
-                Image(systemName: "camera.fill")
-                    .foregroundColor(isCapturing ? .green : .white)
-                Text("\(capturedCount)/\(targetFrameCount)")
+                Image(systemName: "photo.fill")
+                    .foregroundColor(capturedCount > 0 ? .green : .white)
+                Text("Photos: \(capturedCount)")
                     .font(.headline)
                     .monospacedDigit()
             }
@@ -76,6 +95,7 @@ struct DepthCaptureView: View {
                     .font(.subheadline)
             }
         }
+        .foregroundColor(.white)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.ultraThinMaterial)
@@ -88,24 +108,23 @@ struct DepthCaptureView: View {
                 .font(.system(size: 50))
                 .foregroundColor(.white)
 
-            Text("Capture Photos for Damage Analysis")
+            Text("Capture Damage Photos")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
 
             VStack(alignment: .leading, spacing: 8) {
-                InstructionItem(icon: "arrow.left.and.right", text: "Walk slowly around the room")
-                InstructionItem(icon: "camera", text: "Point at walls, floors, ceilings")
-                InstructionItem(icon: "ruler", text: "Stay 1-3 meters from surfaces")
+                InstructionItem(icon: "eye", text: "Look for cracks, holes, stains, mold")
+                InstructionItem(icon: "camera", text: "Point camera at damage (1-2m away)")
+                InstructionItem(icon: "hand.tap", text: "Tap capture button for each damage")
             }
             .padding()
             .background(Color.black.opacity(0.6))
             .cornerRadius(12)
 
-            Button("Start Capturing") {
+            Button("Start") {
                 withAnimation {
                     showInstructions = false
-                    isCapturing = true
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -131,33 +150,30 @@ struct DepthCaptureView: View {
                     .clipShape(Capsule())
             }
 
-            // Progress ring / capture button
-            ZStack {
-                // Progress ring
-                Circle()
-                    .stroke(Color.white.opacity(0.3), lineWidth: 4)
-                    .frame(width: 80, height: 80)
+            // Manual capture button
+            Button(action: capturePhoto) {
+                ZStack {
+                    // Outer ring
+                    Circle()
+                        .stroke(Color.white, lineWidth: 4)
+                        .frame(width: 90, height: 90)
 
-                Circle()
-                    .trim(from: 0, to: CGFloat(capturedCount) / CGFloat(targetFrameCount))
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .frame(width: 80, height: 80)
-                    .rotationEffect(.degrees(-90))
+                    // Inner filled circle
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 72, height: 72)
 
-                // Inner circle with count
-                Circle()
-                    .fill(capturedCount >= targetFrameCount ? Color.green : Color.white)
-                    .frame(width: 64, height: 64)
-
-                Text("\(capturedCount)")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(capturedCount >= targetFrameCount ? .white : .black)
+                    // Camera icon
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.black)
+                }
             }
+            .disabled(showInstructions)
+            .opacity(showInstructions ? 0.5 : 1.0)
 
             // Done button
             Button {
-                isCapturing = false
                 appState.startDamageAnalysis()
             } label: {
                 Text("Done")
@@ -173,6 +189,25 @@ struct DepthCaptureView: View {
         .padding(.vertical, 16)
         .background(.ultraThinMaterial)
         .cornerRadius(40)
+    }
+
+    private func capturePhoto() {
+        // Haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+
+        // Flash effect
+        withAnimation(.easeIn(duration: 0.1)) {
+            showCaptureFlash = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                showCaptureFlash = false
+            }
+        }
+
+        // Capture current frame
+        viewController?.captureCurrentFrame()
     }
 }
 
@@ -199,21 +234,23 @@ private struct InstructionItem: View {
 struct DepthCaptureARViewContainer: UIViewControllerRepresentable {
     let frameCaptureService: ARFrameCaptureService
     let onFrameCaptured: () -> Void
-    @Binding var isCapturing: Bool
+    var onViewControllerCreated: ((DepthCaptureARViewController) -> Void)?
 
     func makeUIViewController(context: Context) -> DepthCaptureARViewController {
         let controller = DepthCaptureARViewController()
         controller.frameCaptureService = frameCaptureService
         controller.onFrameCaptured = onFrameCaptured
+
+        // Expose controller to SwiftUI
+        DispatchQueue.main.async {
+            onViewControllerCreated?(controller)
+        }
+
         return controller
     }
 
     func updateUIViewController(_ uiViewController: DepthCaptureARViewController, context: Context) {
-        if isCapturing {
-            uiViewController.startCapturing()
-        } else {
-            uiViewController.stopCapturing()
-        }
+        // No longer need to update capturing state - manual capture only
     }
 }
 
@@ -227,9 +264,7 @@ final class DepthCaptureARViewController: UIViewController {
     var onFrameCaptured: (() -> Void)?
 
     private var isSessionRunning = false
-    private var lastCaptureTime: Date = .distantPast
-    private let captureInterval: TimeInterval = 2.0
-    private let maxFrames = 15
+    private var currentFrame: ARFrame?  // Store latest frame for manual capture
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -269,6 +304,7 @@ final class DepthCaptureARViewController: UIViewController {
 
         arView.session.run(config)
         isSessionRunning = true
+        frameCaptureService?.startCapturing()
         print("DepthCaptureARViewController: ARSession started with depth capture")
     }
 
@@ -276,32 +312,19 @@ final class DepthCaptureARViewController: UIViewController {
         guard isSessionRunning else { return }
         arView.session.pause()
         isSessionRunning = false
+        frameCaptureService?.stopCapturing()
         print("DepthCaptureARViewController: ARSession stopped")
     }
 
-    func startCapturing() {
-        frameCaptureService?.startCapturing()
-    }
+    /// Called by SwiftUI when user taps capture button
+    func captureCurrentFrame() {
+        guard let frame = currentFrame,
+              let service = frameCaptureService else {
+            print("DepthCaptureARViewController: No frame available to capture")
+            return
+        }
 
-    func stopCapturing() {
-        frameCaptureService?.stopCapturing()
-    }
-}
-
-// MARK: - ARSessionDelegate
-
-extension DepthCaptureARViewController: ARSessionDelegate {
-    func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        guard let service = frameCaptureService,
-              service.isCapturing,
-              service.frameCount < maxFrames else { return }
-
-        // Throttle captures
-        let now = Date()
-        guard now.timeIntervalSince(lastCaptureTime) >= captureInterval else { return }
-        lastCaptureTime = now
-
-        // Capture frame with depth
+        // Capture the current frame with depth
         service.captureFrame(from: frame)
 
         // Notify UI
@@ -309,7 +332,17 @@ extension DepthCaptureARViewController: ARSessionDelegate {
             self.onFrameCaptured?()
         }
 
-        print("DepthCaptureARViewController: Captured frame \(service.frameCount) with depth")
+        print("DepthCaptureARViewController: Manually captured frame \(service.frameCount) with depth")
+    }
+}
+
+// MARK: - ARSessionDelegate
+
+extension DepthCaptureARViewController: ARSessionDelegate {
+    func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        // Store the latest frame for manual capture
+        // Don't auto-capture - user will tap button when they see damage
+        currentFrame = frame
     }
 
     func session(_ session: ARSession, didFailWithError error: Error) {

@@ -313,10 +313,13 @@ final class DamageAnalysisService: ObservableObject {
             }
         }
 
-        // Determine overall condition (worst case)
-        let overallCondition = determineOverallCondition(from: conditions, damages: allDamages)
+        // Deduplicate damages across frames (same damage may appear in multiple frames)
+        let uniqueDamages = deduplicateDamages(allDamages)
 
-        return (allDamages, overallCondition)
+        // Determine overall condition (worst case)
+        let overallCondition = determineOverallCondition(from: conditions, damages: uniqueDamages)
+
+        return (uniqueDamages, overallCondition)
     }
 
     /// Process results with frame depth data for damage size calculation
@@ -350,10 +353,13 @@ final class DamageAnalysisService: ObservableObject {
             }
         }
 
-        // Determine overall condition (worst case)
-        let overallCondition = determineOverallCondition(from: conditions, damages: allDamages)
+        // Deduplicate damages across frames (same damage may appear in multiple frames)
+        let uniqueDamages = deduplicateDamages(allDamages)
 
-        return (allDamages, overallCondition)
+        // Determine overall condition (worst case)
+        let overallCondition = determineOverallCondition(from: conditions, damages: uniqueDamages)
+
+        return (uniqueDamages, overallCondition)
     }
 
     private func convertToDamage(
@@ -492,5 +498,96 @@ final class DamageAnalysisService: ObservableObject {
         case .poor: return 3
         case .critical: return 4
         }
+    }
+
+    // MARK: - Damage Deduplication
+
+    /// Deduplicates damages detected across multiple frames
+    private func deduplicateDamages(_ damages: [DetectedDamage]) -> [DetectedDamage] {
+        guard damages.count > 1 else { return damages }
+
+        var uniqueDamages: [DetectedDamage] = []
+
+        for damage in damages {
+            // Check if this damage is a duplicate of an existing one
+            if let existingIndex = findMatchingDamage(damage, in: uniqueDamages) {
+                // Keep the better one (higher confidence or closer distance)
+                if shouldReplace(existing: uniqueDamages[existingIndex], with: damage) {
+                    uniqueDamages[existingIndex] = damage
+                }
+            } else {
+                // New unique damage
+                uniqueDamages.append(damage)
+            }
+        }
+
+        print("DamageAnalysisService: Deduplicated \(damages.count) damages to \(uniqueDamages.count) unique")
+        return uniqueDamages
+    }
+
+    /// Find a matching damage in the list (same damage seen from different frame)
+    private func findMatchingDamage(_ damage: DetectedDamage, in list: [DetectedDamage]) -> Int? {
+        for (index, existing) in list.enumerated() {
+            if isDuplicate(damage, existing) {
+                return index
+            }
+        }
+        return nil
+    }
+
+    /// Check if two damages are likely the same (even with different types)
+    private func isDuplicate(_ a: DetectedDamage, _ b: DetectedDamage) -> Bool {
+        // Primary check: bounding box overlap (spatial similarity)
+        if let bboxA = a.boundingBox, let bboxB = b.boundingBox {
+            let iou = calculateIoU(bboxA, bboxB)
+            if iou > 0.3 {
+                // High overlap - likely same damage even if types differ
+                return true
+            }
+        }
+
+        // Secondary check: similar real-world size AND same type
+        // (more conservative - requires type match when no bbox overlap)
+        if a.type == b.type,
+           let areaA = a.realArea, let areaB = b.realArea {
+            let sizeDiff = abs(areaA - areaB) / max(areaA, areaB)
+            if sizeDiff < 1.0 { // Within 100% size difference
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /// Calculate Intersection over Union for bounding boxes
+    private func calculateIoU(_ a: DamageBoundingBox, _ b: DamageBoundingBox) -> Float {
+        let x1 = max(a.x, b.x)
+        let y1 = max(a.y, b.y)
+        let x2 = min(a.x + a.width, b.x + b.width)
+        let y2 = min(a.y + a.height, b.y + b.height)
+
+        let intersection = max(0, x2 - x1) * max(0, y2 - y1)
+        let areaA = a.width * a.height
+        let areaB = b.width * b.height
+        let union = areaA + areaB - intersection
+
+        return union > 0 ? intersection / union : 0
+    }
+
+    /// Decide which damage to keep when duplicates are found
+    private func shouldReplace(existing: DetectedDamage, with new: DetectedDamage) -> Bool {
+        // Prefer higher confidence
+        if new.confidence > existing.confidence + 0.1 {
+            return true
+        }
+
+        // Prefer closer distance (more accurate depth measurement)
+        if let newDist = new.distanceFromCamera,
+           let existDist = existing.distanceFromCamera,
+           newDist < existDist * 0.8 {
+            return true
+        }
+
+        return false
     }
 }

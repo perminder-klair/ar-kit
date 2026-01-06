@@ -48,21 +48,16 @@ struct ReportView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") {
-                        appState.reset()
+                    Button {
+                        appState.navigateTo(.dimensions)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
                     }
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Unit", selection: $selectedUnit) {
-                            Text("Meters").tag(CapturedRoomProcessor.RoomDimensions.MeasurementUnit.meters)
-                            Text("Feet").tag(CapturedRoomProcessor.RoomDimensions.MeasurementUnit.feet)
-                        }
-                    } label: {
-                        Image(systemName: "ruler")
-                    }
-                }
             }
             .loadingOverlay(isLoading: isExporting, message: "Exporting...")
             .alert("Export Error", isPresented: .constant(exportError != nil)) {

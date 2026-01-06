@@ -74,7 +74,10 @@ struct DimensionsView: View {
                 Button {
                     appState.navigateTo(.report)
                 } label: {
-                    Label("Report", systemImage: "doc.text")
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.text")
+                        Text("Report")
+                    }
                 }
             }
         }

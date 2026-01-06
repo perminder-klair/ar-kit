@@ -4,7 +4,6 @@ import RoomPlan
 /// Report view with export options
 struct ReportView: View {
     @EnvironmentObject var appState: AppState
-    @Environment(\.dismiss) var dismiss
     let capturedRoom: CapturedRoom
 
     @State private var dimensions: CapturedRoomProcessor.RoomDimensions?
@@ -50,7 +49,7 @@ struct ReportView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") {
-                        dismiss()
+                        appState.reset()
                     }
                 }
 
@@ -128,7 +127,8 @@ struct ReportView: View {
                 let url = try exporter.exportPDF(
                     dimensions: dims,
                     capturedRoom: capturedRoom,
-                    damageAnalysis: appState.damageAnalysisResult
+                    damageAnalysis: appState.damageAnalysisResult,
+                    capturedFrames: appState.frameCaptureService.capturedFrames
                 )
                 exportedFileURL = url
                 showShareSheet = true

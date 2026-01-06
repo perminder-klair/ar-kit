@@ -175,16 +175,17 @@ final class RoomExporter {
         dimensions: CapturedRoomProcessor.RoomDimensions,
         capturedRoom: CapturedRoom
     ) throws -> URL {
-        try exportPDF(dimensions: dimensions, capturedRoom: capturedRoom, damageAnalysis: nil)
+        try exportPDF(dimensions: dimensions, capturedRoom: capturedRoom, damageAnalysis: nil, capturedFrames: [])
     }
 
     /// Export as PDF report with damage analysis
     func exportPDF(
         dimensions: CapturedRoomProcessor.RoomDimensions,
         capturedRoom: CapturedRoom,
-        damageAnalysis: DamageAnalysisResult?
+        damageAnalysis: DamageAnalysisResult?,
+        capturedFrames: [CapturedFrame] = []
     ) throws -> URL {
-        let pdfData = generatePDFData(dimensions: dimensions, capturedRoom: capturedRoom, damageAnalysis: damageAnalysis)
+        let pdfData = generatePDFData(dimensions: dimensions, capturedRoom: capturedRoom, damageAnalysis: damageAnalysis, capturedFrames: capturedFrames)
 
         let filename = generateFilename(extension: "pdf")
         let url = exportDirectory.appendingPathComponent(filename)
@@ -292,7 +293,8 @@ final class RoomExporter {
     private func generatePDFData(
         dimensions: CapturedRoomProcessor.RoomDimensions,
         capturedRoom: CapturedRoom,
-        damageAnalysis: DamageAnalysisResult? = nil
+        damageAnalysis: DamageAnalysisResult? = nil,
+        capturedFrames: [CapturedFrame] = []
     ) -> Data {
         let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792) // US Letter
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
@@ -438,7 +440,8 @@ final class RoomExporter {
                         at: yOffset,
                         color: .systemRed,
                         context: context,
-                        pageRect: pageRect
+                        pageRect: pageRect,
+                        capturedFrames: capturedFrames
                     )
                 }
 
@@ -449,7 +452,8 @@ final class RoomExporter {
                         at: yOffset,
                         color: .systemOrange,
                         context: context,
-                        pageRect: pageRect
+                        pageRect: pageRect,
+                        capturedFrames: capturedFrames
                     )
                 }
 
@@ -460,7 +464,8 @@ final class RoomExporter {
                         at: yOffset,
                         color: .systemYellow,
                         context: context,
-                        pageRect: pageRect
+                        pageRect: pageRect,
+                        capturedFrames: capturedFrames
                     )
                 }
 
@@ -471,7 +476,8 @@ final class RoomExporter {
                         at: yOffset,
                         color: .systemGreen,
                         context: context,
-                        pageRect: pageRect
+                        pageRect: pageRect,
+                        capturedFrames: capturedFrames
                     )
                 }
             }
@@ -525,7 +531,8 @@ final class RoomExporter {
         at yOffset: CGFloat,
         color: UIColor,
         context: UIGraphicsPDFRendererContext,
-        pageRect: CGRect
+        pageRect: CGRect,
+        capturedFrames: [CapturedFrame] = []
     ) -> CGFloat {
         var currentY = yOffset
 
@@ -544,10 +551,22 @@ final class RoomExporter {
         currentY += 20
 
         for (index, damage) in damages.prefix(5).enumerated() {
-            // Check if we need a new page
-            if currentY > pageRect.height - 80 {
+            // Check if we need a new page for image + text (~280pt needed)
+            if currentY > pageRect.height - 280 {
                 context.beginPage()
                 currentY = 50
+            }
+
+            // Draw damage image with overlay if available
+            if damage.imageIndex < capturedFrames.count {
+                let frame = capturedFrames[damage.imageIndex]
+                currentY = drawDamageImage(
+                    damage: damage,
+                    frame: frame,
+                    at: currentY,
+                    severityColor: color,
+                    pageRect: pageRect
+                )
             }
 
             let damageTitle = "\(index + 1). \(damage.type.displayName) - \(damage.surfaceType.displayName)"
@@ -585,7 +604,7 @@ final class RoomExporter {
                 currentY += 30
             }
 
-            currentY += 5
+            currentY += 10
         }
 
         if damages.count > 5 {
@@ -601,6 +620,82 @@ final class RoomExporter {
         }
 
         return currentY + 10
+    }
+
+    private func drawDamageImage(
+        damage: DetectedDamage,
+        frame: CapturedFrame,
+        at yOffset: CGFloat,
+        severityColor: UIColor,
+        pageRect: CGRect
+    ) -> CGFloat {
+        guard let image = UIImage(data: frame.imageData) else {
+            return yOffset
+        }
+
+        // Scale image to fit PDF width (max 250pt width, maintain aspect ratio)
+        let maxWidth: CGFloat = 250
+        let maxHeight: CGFloat = 180
+        let imageAspect = image.size.width / image.size.height
+
+        var drawWidth = maxWidth
+        var drawHeight = drawWidth / imageAspect
+
+        if drawHeight > maxHeight {
+            drawHeight = maxHeight
+            drawWidth = drawHeight * imageAspect
+        }
+
+        let imageX: CGFloat = 90
+        let imageRect = CGRect(x: imageX, y: yOffset, width: drawWidth, height: drawHeight)
+
+        // Draw the image
+        image.draw(in: imageRect)
+
+        // Draw bounding box overlay if available
+        if let bbox = damage.boundingBox {
+            let bboxX = imageX + CGFloat(bbox.x) * drawWidth
+            let bboxY = yOffset + CGFloat(bbox.y) * drawHeight
+            let bboxWidth = CGFloat(bbox.width) * drawWidth
+            let bboxHeight = CGFloat(bbox.height) * drawHeight
+
+            let bboxRect = CGRect(x: bboxX, y: bboxY, width: bboxWidth, height: bboxHeight)
+
+            // Draw semi-transparent fill
+            let fillColor = severityColor.withAlphaComponent(0.15)
+            fillColor.setFill()
+            UIBezierPath(rect: bboxRect).fill()
+
+            // Draw border
+            severityColor.setStroke()
+            let borderPath = UIBezierPath(rect: bboxRect)
+            borderPath.lineWidth = 2
+            borderPath.stroke()
+
+            // Draw severity label on the bounding box
+            let labelText = damage.severity.displayName.uppercased()
+            let labelFont = UIFont.boldSystemFont(ofSize: 8)
+            let labelAttrs: [NSAttributedString.Key: Any] = [
+                .font: labelFont,
+                .foregroundColor: UIColor.white,
+                .backgroundColor: severityColor
+            ]
+            let labelSize = labelText.size(withAttributes: labelAttrs)
+            let labelRect = CGRect(x: bboxX, y: bboxY - labelSize.height - 2, width: labelSize.width + 4, height: labelSize.height + 2)
+
+            severityColor.setFill()
+            UIBezierPath(rect: labelRect).fill()
+
+            labelText.draw(at: CGPoint(x: bboxX + 2, y: bboxY - labelSize.height - 1), withAttributes: [.font: labelFont, .foregroundColor: UIColor.white])
+        }
+
+        // Draw image border
+        UIColor.lightGray.setStroke()
+        let imageBorder = UIBezierPath(rect: imageRect)
+        imageBorder.lineWidth = 0.5
+        imageBorder.stroke()
+
+        return yOffset + drawHeight + 10
     }
 
     private func drawSection(title: String, at yOffset: CGFloat, in context: CGContext) -> CGFloat {

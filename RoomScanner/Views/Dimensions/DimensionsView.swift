@@ -10,6 +10,12 @@ struct DimensionsView: View {
     @State private var dimensions: CapturedRoomProcessor.RoomDimensions?
     @State private var selectedUnit: CapturedRoomProcessor.RoomDimensions.MeasurementUnit = .meters
     @State private var showExportSheet = false
+    @State private var viewMode: ViewMode = .floorPlan
+
+    enum ViewMode: String, CaseIterable {
+        case floorPlan = "2D Floor Plan"
+        case model3D = "3D Model"
+    }
 
     private let processor = CapturedRoomProcessor()
 
@@ -21,12 +27,29 @@ struct DimensionsView: View {
                     SummaryCard(dimensions: dims, unit: selectedUnit)
                 }
 
-                // Floor Plan Preview
-                FloorPlanPreview(capturedRoom: capturedRoom)
-                    .frame(height: 250)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
+                // View Mode Picker
+                Picker("View Mode", selection: $viewMode) {
+                    ForEach(ViewMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+
+                // Room Visualization (2D or 3D)
+                Group {
+                    switch viewMode {
+                    case .floorPlan:
+                        FloorPlanPreview(capturedRoom: capturedRoom)
+                            .frame(height: 250)
+                    case .model3D:
+                        RoomModelViewer(capturedRoom: capturedRoom)
+                            .frame(height: 300)
+                    }
+                }
+                .background(Color(.systemGray6))
+                .cornerRadius(16)
+                .padding(.horizontal)
 
                 // Detailed Measurements
                 if let dims = dimensions {
@@ -37,6 +60,17 @@ struct DimensionsView: View {
         }
         .navigationTitle("Room Dimensions")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    appState.reset()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "house")
+                        Text("Home")
+                    }
+                }
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Picker("Unit", selection: $selectedUnit) {
@@ -210,15 +244,23 @@ struct FloorPlanPreview: View {
     }
 
     private func drawFloorPlan(context: GraphicsContext, size: CGSize) {
-        guard let floor = capturedRoom.floors.first,
-              !floor.polygonCorners.isEmpty else {
-            // Draw placeholder
-            let rect = CGRect(x: 20, y: 20, width: size.width - 40, height: size.height - 40)
-            context.stroke(Path(rect), with: .color(.gray), lineWidth: 2)
+        // Try floor polygon first, fallback to inferring from walls
+        let corners: [simd_float3]
+
+        if let floor = capturedRoom.floors.first, !floor.polygonCorners.isEmpty {
+            corners = floor.polygonCorners
+        } else if !capturedRoom.walls.isEmpty {
+            corners = inferFloorFromWalls(capturedRoom.walls)
+        } else {
+            // No data - draw placeholder
+            drawPlaceholder(context: context, size: size)
             return
         }
 
-        let corners = floor.polygonCorners
+        guard !corners.isEmpty else {
+            drawPlaceholder(context: context, size: size)
+            return
+        }
 
         // Find bounds
         var minX: Float = .infinity
@@ -304,6 +346,83 @@ struct FloorPlanPreview: View {
             let rect = CGRect(x: point.x - 4, y: point.y - 2, width: 8, height: 4)
             context.fill(Path(rect), with: .color(.cyan))
         }
+    }
+
+    private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
+        let rect = CGRect(x: 20, y: 20, width: size.width - 40, height: size.height - 40)
+        context.stroke(Path(rect), with: .color(.gray.opacity(0.3)), lineWidth: 1)
+    }
+
+    /// Infer floor outline from wall positions using convex hull
+    private func inferFloorFromWalls(_ walls: [CapturedRoom.Surface]) -> [simd_float3] {
+        var points: [simd_float3] = []
+
+        for wall in walls {
+            // Wall center position
+            let pos = simd_float3(
+                wall.transform.columns.3.x,
+                0,
+                wall.transform.columns.3.z
+            )
+            points.append(pos)
+
+            // Wall corners based on dimensions and rotation
+            let halfWidth = wall.dimensions.x / 2
+            let rotation = atan2(wall.transform.columns.0.z, wall.transform.columns.0.x)
+
+            let corner1 = simd_float3(
+                pos.x + halfWidth * cos(rotation),
+                0,
+                pos.z + halfWidth * sin(rotation)
+            )
+            let corner2 = simd_float3(
+                pos.x - halfWidth * cos(rotation),
+                0,
+                pos.z - halfWidth * sin(rotation)
+            )
+            points.append(corner1)
+            points.append(corner2)
+        }
+
+        return convexHull(points)
+    }
+
+    /// Compute convex hull using Graham scan algorithm
+    private func convexHull(_ points: [simd_float3]) -> [simd_float3] {
+        guard points.count >= 3 else { return points }
+
+        // Find lowest point (smallest z, then smallest x)
+        var sorted = points.sorted { a, b in
+            if a.z != b.z { return a.z < b.z }
+            return a.x < b.x
+        }
+
+        let pivot = sorted.removeFirst()
+
+        // Sort by polar angle with respect to pivot
+        sorted.sort { a, b in
+            let angleA = atan2(a.z - pivot.z, a.x - pivot.x)
+            let angleB = atan2(b.z - pivot.z, b.x - pivot.x)
+            return angleA < angleB
+        }
+
+        var hull: [simd_float3] = [pivot]
+
+        for point in sorted {
+            while hull.count >= 2 {
+                let a = hull[hull.count - 2]
+                let b = hull[hull.count - 1]
+                let cross = (b.x - a.x) * (point.z - a.z) - (b.z - a.z) * (point.x - a.x)
+                if cross <= 0 {
+                    hull.removeLast()
+                } else {
+                    break
+                }
+            }
+            hull.append(point)
+        }
+
+        return hull
     }
 }
 

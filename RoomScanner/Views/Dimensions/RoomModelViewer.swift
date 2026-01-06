@@ -1,75 +1,40 @@
 import SwiftUI
 import RoomPlan
-import QuickLook
+import SceneKit
 
-/// 3D viewer for CapturedRoom using Quick Look
+/// 3D viewer for CapturedRoom using inline SceneKit
 struct RoomModelViewer: View {
     let capturedRoom: CapturedRoom
 
     @State private var modelURL: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
-    @State private var showQuickLook = false
 
     var body: some View {
         ZStack {
             if isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
-                        .scaleEffect(1.2)
-                    Text("Preparing 3D Model...")
+                    Text("Loading 3D Model...")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            } else if modelURL != nil {
-                // Show preview button and thumbnail
-                VStack(spacing: 16) {
-                    Image(systemName: "cube.fill")
-                        .font(.system(size: 60))
-                        .foregroundStyle(.blue)
-
-                    Text("3D Room Model")
-                        .font(.headline)
-
-                    Text("Tap to view in 3D")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Button {
-                        showQuickLook = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "arkit")
-                            Text("Open 3D Viewer")
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    showQuickLook = true
-                }
+            } else if let url = modelURL {
+                SceneKitView(modelURL: url)
             } else if let error = errorMessage {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     Image(systemName: "cube.transparent")
                         .font(.system(size: 40))
                         .foregroundStyle(.secondary)
                     Text("Could not load 3D model")
-                        .font(.headline)
-                    Text(error)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
-                .padding()
             }
         }
-        .quickLookPreview($modelURL)
         .task {
             await loadModel()
         }
@@ -77,12 +42,9 @@ struct RoomModelViewer: View {
 
     private func loadModel() async {
         do {
-            // Export to temp file
             let tempURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("room_preview_\(UUID().uuidString).usdz")
-
             try capturedRoom.export(to: tempURL, exportOptions: .mesh)
-
             await MainActor.run {
                 self.modelURL = tempURL
                 self.isLoading = false
@@ -96,4 +58,43 @@ struct RoomModelViewer: View {
     }
 }
 
-// Preview not available - CapturedRoom requires LiDAR scan data
+/// SceneKit wrapper to display USDZ model inline
+struct SceneKitView: UIViewRepresentable {
+    let modelURL: URL
+
+    func makeUIView(context: Context) -> SCNView {
+        let scnView = SCNView()
+        scnView.backgroundColor = .clear
+        scnView.autoenablesDefaultLighting = true
+        scnView.allowsCameraControl = true
+
+        if let scene = try? SCNScene(url: modelURL) {
+            scnView.scene = scene
+
+            // Calculate bounding box to position camera
+            let (minBound, maxBound) = scene.rootNode.boundingBox
+            let center = SCNVector3(
+                (minBound.x + maxBound.x) / 2,
+                (minBound.y + maxBound.y) / 2,
+                (minBound.z + maxBound.z) / 2
+            )
+            let size = max(maxBound.x - minBound.x, max(maxBound.y - minBound.y, maxBound.z - minBound.z))
+
+            // Camera setup to view the model from above at an angle
+            let cameraNode = SCNNode()
+            cameraNode.camera = SCNCamera()
+            cameraNode.camera?.automaticallyAdjustsZRange = true
+            cameraNode.position = SCNVector3(
+                center.x,
+                center.y + size * 1.5,
+                center.z + size * 1.5
+            )
+            cameraNode.look(at: center)
+            scene.rootNode.addChildNode(cameraNode)
+        }
+
+        return scnView
+    }
+
+    func updateUIView(_ uiView: SCNView, context: Context) {}
+}

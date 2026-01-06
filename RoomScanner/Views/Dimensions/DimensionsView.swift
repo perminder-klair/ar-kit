@@ -9,8 +9,7 @@ struct DimensionsView: View {
 
     @State private var dimensions: CapturedRoomProcessor.RoomDimensions?
     @State private var selectedUnit: CapturedRoomProcessor.RoomDimensions.MeasurementUnit = .meters
-    @State private var showExportSheet = false
-    @State private var viewMode: ViewMode = .floorPlan
+    @State private var viewMode: ViewMode = .model3D
 
     enum ViewMode: String, CaseIterable {
         case floorPlan = "2D Floor Plan"
@@ -72,63 +71,29 @@ struct DimensionsView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Unit", selection: $selectedUnit) {
-                        Text("Meters").tag(CapturedRoomProcessor.RoomDimensions.MeasurementUnit.meters)
-                        Text("Feet").tag(CapturedRoomProcessor.RoomDimensions.MeasurementUnit.feet)
-                    }
-                } label: {
-                    Label("Units", systemImage: "ruler")
-                }
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showExportSheet = true
+                    appState.navigateTo(.report)
                 } label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
+                    Label("Report", systemImage: "doc.text")
                 }
             }
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 12) {
-                // Damage Analysis Button - goes to depth capture first
-                Button {
-                    appState.startDepthCapture()
-                } label: {
-                    HStack {
-                        Image(systemName: "camera.viewfinder")
-                        Text("Capture for Damage Analysis")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.orange)
-                    .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            Button {
+                appState.startDepthCapture()
+            } label: {
+                HStack {
+                    Image(systemName: "camera.viewfinder")
+                    Text("Capture for Damage Analysis")
                 }
-
-                // View Report Button
-                Button {
-                    appState.navigateTo(.report)
-                } label: {
-                    HStack {
-                        Image(systemName: "doc.text")
-                        Text("View Report")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.orange)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding()
             .background(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showExportSheet) {
-            if let dims = dimensions {
-                ReportView(capturedRoom: capturedRoom)
-            }
         }
         .onAppear {
             dimensions = processor.extractDimensions(from: capturedRoom)
@@ -349,8 +314,15 @@ struct FloorPlanPreview: View {
     }
 
     private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
+        // Draw border
         let rect = CGRect(x: 20, y: 20, width: size.width - 40, height: size.height - 40)
         context.stroke(Path(rect), with: .color(.gray.opacity(0.3)), lineWidth: 1)
+
+        // Draw "No floor data" message
+        let text = Text("No floor plan data available")
+            .font(.caption)
+            .foregroundColor(.secondary)
+        context.draw(text, at: CGPoint(x: size.width / 2, y: size.height / 2), anchor: .center)
     }
 
     /// Infer floor outline from wall positions using convex hull

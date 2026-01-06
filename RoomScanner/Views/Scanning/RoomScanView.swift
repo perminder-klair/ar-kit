@@ -283,17 +283,32 @@ struct RoomScanView: View {
             // Controls overlay (shown when permission granted)
             if cameraPermissionGranted {
                 VStack {
-                    // Top status bar with controls
-                    ScanStatusBar(
-                        detectedItems: appState.roomCaptureService.detectedItems,
-                        capturedFrames: appState.capturedFrameCount,
-                        onStop: stopScanning,
-                        onCancel: { showCancelAlert = true }
-                    )
-                    .padding(.top, 60)
-                    .padding(.horizontal)
-
                     Spacer()
+                    HStack {
+                        Spacer()
+                        // Vertical button stack - bottom right
+                        VStack(spacing: 16) {
+                            Button(action: { showCancelAlert = true }) {
+                                Image(systemName: "xmark")
+                                    .font(.title2.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Circle())
+                            }
+
+                            Button(action: stopScanning) {
+                                Image(systemName: "stop.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(.red)
+                                    .clipShape(Circle())
+                            }
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 40)
+                    }
                 }
             }
         }
@@ -343,69 +358,6 @@ struct RoomScanView: View {
     }
 }
 
-// MARK: - Status Bar
-
-struct ScanStatusBar: View {
-    let detectedItems: RoomCaptureService.DetectedItems
-    var capturedFrames: Int = 0
-    let onStop: () -> Void
-    let onCancel: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            // Cancel button (left)
-            Button(action: onCancel) {
-                Image(systemName: "xmark")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(.white.opacity(0.2))
-                    .clipShape(Circle())
-            }
-
-            // Stats in center
-            HStack(spacing: 12) {
-                StatusItem(icon: "rectangle.portrait", count: detectedItems.wallCount, label: "Walls")
-                StatusItem(icon: "door.left.hand.closed", count: detectedItems.doorCount, label: "Doors")
-                StatusItem(icon: "window.vertical.closed", count: detectedItems.windowCount, label: "Windows")
-                StatusItem(icon: "camera.fill", count: capturedFrames, label: "Photos")
-            }
-
-            // Stop button (right)
-            Button(action: onStop) {
-                Image(systemName: "stop.fill")
-                    .font(.body)
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(.red)
-                    .clipShape(Circle())
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
-        .cornerRadius(24)
-    }
-}
-
-struct StatusItem: View {
-    let icon: String
-    let count: Int
-    let label: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.title3)
-            Text("\(count)")
-                .font(.headline)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(minWidth: 50)
-    }
-}
 
 #Preview {
     RoomScanView()

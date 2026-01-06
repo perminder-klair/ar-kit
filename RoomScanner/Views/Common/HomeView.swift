@@ -18,7 +18,7 @@ struct HomeView: View {
 
             // Title
             VStack(spacing: 8) {
-                Text("Fixzy Room Scanner")
+                Text("Fixzy Scanner")
                     .font(.largeTitle.bold())
                 Text("Scan rooms with LiDAR to get accurate dimensions")
                     .font(.subheadline)

@@ -20,22 +20,17 @@ struct ReportView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Summary Header
-                    if let dims = dimensions {
-                        ReportSummaryHeader(dimensions: dims, unit: selectedUnit)
-                    }
-
-                    // Damage Analysis Summary (if available)
-                    if let damageResult = appState.damageAnalysisResult {
-                        DamageReportSection(damageResult: damageResult)
-                    }
-
                     // Export Options
                     ExportOptionsSection(
                         onExportUSDZ: exportUSDZ,
                         onExportJSON: exportJSON,
                         onExportPDF: exportPDF
                     )
+
+                    // Damage Analysis Summary (if available)
+                    if let damageResult = appState.damageAnalysisResult {
+                        DamageReportSection(damageResult: damageResult)
+                    }
 
                     // Quick Stats
                     if let dims = dimensions {
@@ -58,6 +53,13 @@ struct ReportView: View {
                     }
                 }
 
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        appState.navigateTo(.home)
+                    } label: {
+                        Image(systemName: "house")
+                    }
+                }
             }
             .loadingOverlay(isLoading: isExporting, message: "Exporting...")
             .alert("Export Error", isPresented: .constant(exportError != nil)) {
@@ -141,54 +143,39 @@ struct DamageReportSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Damage Assessment")
-                    .font(.headline)
-                Spacer()
-                ConditionBadge(condition: damageResult.overallCondition)
-            }
+            Text("Damage Assessment")
+                .font(.headline)
 
             VStack(spacing: 8) {
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(damageResult.detectedDamages.count)")
-                            .font(.title2.bold())
-                        Text("Issues Found")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("\(damageResult.detectedDamages.count)")
+                        .font(.title2.bold())
+                    Text("Issues Found")
+                        .foregroundStyle(.secondary)
                     Spacer()
-                    VStack(alignment: .center, spacing: 4) {
-                        Text("\(damageResult.criticalCount)")
-                            .font(.title2.bold())
-                            .foregroundColor(damageResult.criticalCount > 0 ? .red : .primary)
-                        Text("Critical")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("\(damageResult.highPriorityCount)")
-                            .font(.title2.bold())
-                            .foregroundColor(damageResult.highPriorityCount > 0 ? .orange : .primary)
-                        Text("High Priority")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 }
 
                 if !damageResult.detectedDamages.isEmpty {
                     Divider()
 
-                    // Top damages preview
+                    // Tappable damage items
                     ForEach(damageResult.detectedDamages.prefix(3)) { damage in
-                        HStack {
-                            DamageTypeIcon(damageType: damage.type, size: 16)
-                            Text(damage.type.displayName)
-                                .font(.subheadline)
-                            Spacer()
-                            SeverityBadge(severity: damage.severity)
+                        NavigationLink {
+                            DamageDetailView(damage: damage)
+                        } label: {
+                            HStack {
+                                DamageTypeIcon(damageType: damage.type, size: 16)
+                                Text(damage.type.displayName)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
 
                     if damageResult.detectedDamages.count > 3 {
@@ -201,58 +188,6 @@ struct DamageReportSection: View {
             .padding()
             .background(Color(.systemGray6))
             .cornerRadius(12)
-        }
-    }
-}
-
-// MARK: - Report Summary Header
-
-struct ReportSummaryHeader: View {
-    let dimensions: CapturedRoomProcessor.RoomDimensions
-    let unit: CapturedRoomProcessor.RoomDimensions.MeasurementUnit
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 50))
-                .foregroundStyle(.green)
-
-            Text("Scan Complete")
-                .font(.title2.bold())
-
-            HStack(spacing: 32) {
-                StatBadge(
-                    value: dimensions.formatArea(dimensions.totalFloorArea, unit: unit),
-                    label: "Floor Area"
-                )
-                StatBadge(
-                    value: "\(dimensions.wallCount)",
-                    label: "Walls"
-                )
-                StatBadge(
-                    value: dimensions.format(dimensions.ceilingHeight, unit: unit),
-                    label: "Height"
-                )
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color(.systemGray6))
-        .cornerRadius(16)
-    }
-}
-
-struct StatBadge: View {
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.headline)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 }

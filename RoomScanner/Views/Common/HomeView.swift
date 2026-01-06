@@ -20,12 +20,22 @@ struct HomeView: View {
             VStack(spacing: 8) {
                 Text("Fixzy Scanner")
                     .font(.largeTitle.bold())
-                Text("Scan rooms with LiDAR to get accurate dimensions")
+                Text("Scan rooms with LiDAR to get accurate dimensions and detect damage")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
+
+            Spacer()
+
+            // Features List
+            VStack(alignment: .leading, spacing: 12) {
+                FeatureRow(icon: "ruler", text: "Accurate room dimensions")
+                FeatureRow(icon: "square.3.layers.3d", text: "3D room model export")
+                FeatureRow(icon: "doc.text", text: "PDF & JSON reports")
+            }
+            .padding(.horizontal, 40)
 
             Spacer()
 
@@ -46,16 +56,6 @@ struct HomeView: View {
                     .cornerRadius(16)
             }
             .padding(.horizontal, 32)
-
-            // Features List
-            VStack(alignment: .leading, spacing: 12) {
-                FeatureRow(icon: "ruler", text: "Accurate room dimensions")
-                FeatureRow(icon: "square.3.layers.3d", text: "3D room model export")
-                FeatureRow(icon: "doc.text", text: "PDF & JSON reports")
-            }
-            .padding(.horizontal, 40)
-
-            Spacer()
 
             // Device Requirements
             HStack {

@@ -1,0 +1,472 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Damage Detection System - Technical Overview</title>
+        <style>
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                max-width: 850px;
+                margin: 40px auto;
+                padding: 20px;
+                line-height: 1.6;
+                color: #333;
+            }
+            h1 {
+                color: #1a1a1a;
+                border-bottom: 3px solid #007aff;
+                padding-bottom: 10px;
+            }
+            h2 {
+                color: #007aff;
+                margin-top: 30px;
+            }
+            h3 {
+                color: #555;
+                margin-top: 20px;
+            }
+            .highlight-box {
+                background: #f0f7ff;
+                border-left: 4px solid #007aff;
+                padding: 15px 20px;
+                margin: 20px 0;
+                border-radius: 0 8px 8px 0;
+            }
+            .tech-box {
+                background: #f8f9fa;
+                border: 1px solid #e0e0e0;
+                padding: 15px 20px;
+                margin: 20px 0;
+                border-radius: 8px;
+                font-family: "SF Mono", Monaco, monospace;
+                font-size: 0.9em;
+            }
+            .flow-diagram {
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                text-align: center;
+                margin: 20px 0;
+            }
+            .flow-step {
+                display: inline-block;
+                background: #007aff;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                margin: 5px;
+            }
+            .arrow {
+                color: #666;
+                margin: 0 5px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+            th,
+            td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+            }
+            th {
+                background: #007aff;
+                color: white;
+            }
+            tr:nth-child(even) {
+                background: #f8f9fa;
+            }
+            .tech-badge {
+                display: inline-block;
+                background: #e8e8e8;
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-size: 0.9em;
+                margin: 2px;
+            }
+            .benefit-list {
+                list-style: none;
+                padding: 0;
+            }
+            .benefit-list li {
+                padding: 8px 0 8px 30px;
+                position: relative;
+            }
+            .benefit-list li::before {
+                content: "✓";
+                position: absolute;
+                left: 0;
+                color: #28a745;
+                font-weight: bold;
+            }
+            .two-col {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin: 20px 0;
+            }
+            .col-box {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 8px;
+            }
+            code {
+                background: #e8e8e8;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-family: "SF Mono", Monaco, monospace;
+                font-size: 0.9em;
+            }
+            @media print {
+                body {
+                    margin: 20px;
+                }
+                .highlight-box,
+                .tech-box {
+                    break-inside: avoid;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Damage Detection System</h1>
+        <p><strong>Technical Overview</strong> | Room Scanner App</p>
+
+        <div class="highlight-box">
+            <strong>Summary:</strong> Combines Google's Gemini Vision AI for
+            damage identification with iPhone LiDAR depth sensing to
+            automatically detect, classify, and measure property damage with
+            real-world dimensions.
+        </div>
+
+        <h2>System Architecture</h2>
+
+        <div class="flow-diagram">
+            <span class="flow-step">ARKit + LiDAR</span>
+            <span class="arrow">→</span>
+            <span class="flow-step">Frame Capture</span>
+            <span class="arrow">→</span>
+            <span class="flow-step">Gemini AI</span>
+            <span class="arrow">→</span>
+            <span class="flow-step">Size Calculator</span>
+            <span class="arrow">→</span>
+            <span class="flow-step">Results</span>
+        </div>
+
+        <h3>Core Components</h3>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Technology</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td><strong>Room Scanning</strong></td>
+                <td>Apple RoomPlan API</td>
+                <td>
+                    Creates 3D room model, identifies surfaces (walls, floor,
+                    ceiling)
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Depth Capture</strong></td>
+                <td>ARKit + LiDAR sensor</td>
+                <td>
+                    Captures RGB images with depth maps (distance to each pixel)
+                </td>
+            </tr>
+            <tr>
+                <td><strong>AI Detection</strong></td>
+                <td>Google Gemini Vision API</td>
+                <td>
+                    Identifies damage type, severity, and bounding box location
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Size Calculation</strong></td>
+                <td>Pinhole Camera Model</td>
+                <td>
+                    Converts pixel dimensions to real-world centimeters using
+                    depth
+                </td>
+            </tr>
+        </table>
+
+        <h2>Technical Process</h2>
+
+        <h3>Step 1: Depth Frame Capture</h3>
+        <p>
+            When user taps capture, the system extracts from each ARKit frame:
+        </p>
+        <div class="two-col">
+            <div class="col-box">
+                <strong>RGB Image</strong><br />
+                1920 × 1440 pixels<br />
+                JPEG compressed<br />
+                Sent to Gemini AI
+            </div>
+            <div class="col-box">
+                <strong>Depth Map</strong><br />
+                256 × 192 points<br />
+                Float32 (meters)<br />
+                Used for measurements
+            </div>
+        </div>
+        <p>
+            Also captures <strong>camera intrinsics</strong> (focal length,
+            principal point) needed for size math.
+        </p>
+
+        <h3>Step 2: AI Damage Detection</h3>
+        <div class="highlight-box">
+            <strong>Model:</strong> <code>gemini-3.0-flash-preview</code><br />
+            <strong>Input:</strong> RGB image (up to 20MB)<br />
+            <strong>Output:</strong> JSON with damage type, severity,
+            confidence, and normalized bounding box coordinates (0.0–1.0)
+        </div>
+
+        <p><strong>Detected Damage Types:</strong></p>
+        <p>
+            <span class="tech-badge">Crack</span>
+            <span class="tech-badge">Water Damage</span>
+            <span class="tech-badge">Mold</span>
+            <span class="tech-badge">Hole</span>
+            <span class="tech-badge">Peeling</span>
+            <span class="tech-badge">Stain</span>
+            <span class="tech-badge">Weathering</span>
+            <span class="tech-badge">Structural</span>
+        </p>
+
+        <p>
+            <strong>Severity Levels:</strong> Low → Moderate → High → Critical
+        </p>
+
+        <h3>Step 3: Real-World Size Calculation</h3>
+        <p>
+            The system uses the <strong>pinhole camera model</strong> to convert
+            pixel measurements to real centimeters:
+        </p>
+
+        <div class="tech-box">
+            real_width = depth × (pixel_width / focal_length)<br />
+            real_height = depth × (pixel_height / focal_length)<br />
+            real_area = real_width × real_height
+        </div>
+
+        <p><strong>How it works:</strong></p>
+        <ol>
+            <li>
+                Gemini returns bounding box in normalized coordinates (e.g.,
+                x=0.3, y=0.2, width=0.15, height=0.1)
+            </li>
+            <li>
+                Convert to pixel coordinates (e.g., 576 × 432 at position 432,
+                288)
+            </li>
+            <li>
+                Map to depth buffer coordinates (scaled to 256×192 resolution)
+            </li>
+            <li>
+                Sample depth using <strong>3×3 median filter</strong> (handles
+                noise/outliers)
+            </li>
+            <li>Apply pinhole formula with camera's focal length</li>
+        </ol>
+
+        <div class="highlight-box">
+            <strong>Example:</strong> A crack that's 288 pixels wide, captured
+            at 2.1m depth, with focal length 1500px<br />
+            <code>Real width = 2.1 × (288 / 1500) = 0.40m = 40 cm</code>
+        </div>
+
+        <h3>Step 4: Deduplication</h3>
+        <p>
+            When users capture the same damage from multiple angles, duplicates
+            are removed using <strong>IoU (Intersection over Union)</strong>:
+        </p>
+
+        <div class="tech-box">
+            IoU = (Area of Overlap) / (Area of Union)<br />
+            If IoU > 0.3 → Same damage → Keep highest confidence detection
+        </div>
+
+        <h2>Data Flow Diagram</h2>
+        <div class="tech-box" style="text-align: left; line-height: 1.8">
+            <pre style="margin: 0; font-size: 0.85em">
+┌─────────────────────────────────────────────────────────────────┐
+│                        iPhone LiDAR                              │
+│                    (ARKit ARSession)                             │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    CapturedFrame                                 │
+│  • imageData (JPEG)      • depthData (Float32[])                │
+│  • imageWidth/Height     • depthWidth/Height                    │
+│  • cameraIntrinsics      • timestamp                            │
+└──────────────┬──────────────────────────────┬───────────────────┘
+               │                              │
+               ▼                              ▼
+┌──────────────────────────┐    ┌──────────────────────────────────┐
+│     Gemini Vision API    │    │     DamageSizeCalculator         │
+│                          │    │                                  │
+│  Input: RGB Image        │    │  Input: Bounding box + depth     │
+│  Output:                 │    │  Output:                         │
+│   • Damage type          │    │   • Width (cm)                   │
+│   • Severity             │    │   • Height (cm)                  │
+│   • Bounding box (0-1)   │    │   • Area (cm²)                   │
+│   • Confidence           │    │   • Distance (m)                 │
+│   • Recommendation       │    │   • Measurement confidence       │
+└──────────────┬───────────┘    └──────────────┬───────────────────┘
+               │                               │
+               └───────────────┬───────────────┘
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  DamageAnalysisService                           │
+│   • Combines AI results with size measurements                   │
+│   • Deduplicates using IoU > 0.3                                │
+│   • Ranks by severity and confidence                            │
+└────────────────────────┬────────────────────────────────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    DetectedDamage                                │
+│  • type, severity, description                                  │
+│  • realWidth, realHeight, realArea (meters)                     │
+│  • confidence, measurementConfidence                            │
+│  • recommendation                                               │
+└─────────────────────────────────────────────────────────────────┘
+        </pre
+            >
+        </div>
+
+        <h2>Confidence Scoring</h2>
+        <p>Measurement confidence is adjusted based on capture conditions:</p>
+        <table>
+            <tr>
+                <th>Condition</th>
+                <th>Confidence Multiplier</th>
+            </tr>
+            <tr>
+                <td>Distance 1-2m (optimal)</td>
+                <td>1.0× (full confidence)</td>
+            </tr>
+            <tr>
+                <td>Distance 2-3m</td>
+                <td>0.9×</td>
+            </tr>
+            <tr>
+                <td>Distance > 3m</td>
+                <td>0.8×</td>
+            </tr>
+            <tr>
+                <td>Small damage (< 5% of frame)</td>
+                <td>0.85×</td>
+            </tr>
+            <tr>
+                <td>Very small (< 1% of frame)</td>
+                <td>0.7×</td>
+            </tr>
+        </table>
+
+        <h2>API Configuration</h2>
+        <p>Gemini API key loaded with 3-tier priority:</p>
+        <ol>
+            <li>
+                <strong>Environment variable</strong>
+                <code>GEMINI_API_KEY</code> (CI/CD)
+            </li>
+            <li>
+                <strong>Plist file</strong>
+                <code>GeminiAPIKey.plist</code> (bundled)
+            </li>
+            <li>
+                <strong>UserDefaults</strong> (user-entered in app settings)
+            </li>
+        </ol>
+
+        <h2>Output Example</h2>
+
+        <div class="highlight-box">
+            <strong>Detected:</strong> Wall Crack<br />
+            <strong>Severity:</strong> High<br />
+            <strong>Size:</strong> 32 × 18 cm (576 cm²)<br />
+            <strong>Distance:</strong> 2.1 meters from camera<br />
+            <strong>AI Confidence:</strong> 92%<br />
+            <strong>Measurement Confidence:</strong> 88%<br />
+            <strong>Recommendation:</strong> Consult structural engineer for
+            assessment
+        </div>
+
+        <h2>Export Formats</h2>
+        <div class="two-col">
+            <div class="col-box">
+                <strong>JSON Export</strong><br />
+                Machine-readable data including all measurements, coordinates,
+                and metadata
+            </div>
+            <div class="col-box">
+                <strong>PDF Report</strong><br />
+                Formatted report with images, measurements, severity breakdown,
+                and recommendations
+            </div>
+        </div>
+
+        <h2>Hardware Requirements</h2>
+        <table>
+            <tr>
+                <th>Requirement</th>
+                <th>Specification</th>
+                <th>Why Needed</th>
+            </tr>
+            <tr>
+                <td>Device</td>
+                <td>iPhone 12 Pro or newer</td>
+                <td>LiDAR sensor required for depth capture</td>
+            </tr>
+            <tr>
+                <td>iOS Version</td>
+                <td>iOS 17.0+</td>
+                <td>RoomPlan API and ARKit features</td>
+            </tr>
+            <tr>
+                <td>Network</td>
+                <td>Internet connection</td>
+                <td>Gemini API calls for AI analysis</td>
+            </tr>
+        </table>
+
+        <h2>Accuracy Considerations</h2>
+        <ul class="benefit-list">
+            <li>
+                <strong>Optimal capture distance:</strong> 1-3 meters for best
+                depth accuracy
+            </li>
+            <li>
+                <strong>Camera angle:</strong> Perpendicular to surface
+                minimizes projection errors
+            </li>
+            <li>
+                <strong>Lighting:</strong> Good lighting improves AI bounding
+                box precision
+            </li>
+            <li>
+                <strong>LiDAR resolution:</strong> 256×192 depth points
+                (interpolated to image resolution)
+            </li>
+            <li>
+                <strong>3×3 median sampling:</strong> Reduces noise from
+                single-point depth errors
+            </li>
+        </ul>
+
+        <hr style="margin-top: 40px" />
+        <p style="color: #666; font-size: 0.9em; text-align: center">
+            Room Scanner App – Damage Detection Module<br />
+            Technical Overview Document
+        </p>
+    </body>
+</html>

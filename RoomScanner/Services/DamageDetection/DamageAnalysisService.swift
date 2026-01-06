@@ -291,7 +291,6 @@ final class DamageAnalysisService: ObservableObject {
 
     private func processResults(_ results: [ImageAnalysisResult], images: [CapturedImageData]) -> ([DetectedDamage], OverallCondition) {
         var allDamages: [DetectedDamage] = []
-        var conditions: [OverallCondition] = []
 
         for result in results where result.isSuccess {
             guard let response = result.response else { continue }
@@ -306,18 +305,13 @@ final class DamageAnalysisService: ObservableObject {
                 )
                 allDamages.append(damage)
             }
-
-            // Track conditions for overall assessment
-            if let condition = OverallCondition(rawValue: response.overallCondition) {
-                conditions.append(condition)
-            }
         }
 
         // Deduplicate damages across frames (same damage may appear in multiple frames)
         let uniqueDamages = deduplicateDamages(allDamages)
 
-        // Determine overall condition (worst case)
-        let overallCondition = determineOverallCondition(from: conditions, damages: uniqueDamages)
+        // Determine overall condition based on damage count
+        let overallCondition: OverallCondition = uniqueDamages.isEmpty ? .excellent : .good
 
         return (uniqueDamages, overallCondition)
     }
@@ -325,7 +319,6 @@ final class DamageAnalysisService: ObservableObject {
     /// Process results with frame depth data for damage size calculation
     private func processResultsWithFrames(_ results: [ImageAnalysisResult]) -> ([DetectedDamage], OverallCondition) {
         var allDamages: [DetectedDamage] = []
-        var conditions: [OverallCondition] = []
 
         for result in results where result.isSuccess {
             guard let response = result.response else { continue }
@@ -346,18 +339,13 @@ final class DamageAnalysisService: ObservableObject {
                 )
                 allDamages.append(damage)
             }
-
-            // Track conditions for overall assessment
-            if let condition = OverallCondition(rawValue: response.overallCondition) {
-                conditions.append(condition)
-            }
         }
 
         // Deduplicate damages across frames (same damage may appear in multiple frames)
         let uniqueDamages = deduplicateDamages(allDamages)
 
-        // Determine overall condition (worst case)
-        let overallCondition = determineOverallCondition(from: conditions, damages: uniqueDamages)
+        // Determine overall condition based on damage count
+        let overallCondition: OverallCondition = uniqueDamages.isEmpty ? .excellent : .good
 
         return (uniqueDamages, overallCondition)
     }
@@ -369,7 +357,6 @@ final class DamageAnalysisService: ObservableObject {
         imageIndex: Int
     ) -> DetectedDamage {
         let damageType = DamageType(rawValue: item.type) ?? .other
-        let severity = DamageSeverity(rawValue: item.severity) ?? .low
 
         var boundingBox: DamageBoundingBox?
         if let box = item.boundingBox {
@@ -383,7 +370,7 @@ final class DamageAnalysisService: ObservableObject {
 
         return DetectedDamage(
             type: damageType,
-            severity: severity,
+            severity: .low,
             description: item.description,
             surfaceType: surfaceType,
             surfaceId: surfaceId,
@@ -403,7 +390,6 @@ final class DamageAnalysisService: ObservableObject {
         frame: CapturedFrame?
     ) -> DetectedDamage {
         let damageType = DamageType(rawValue: item.type) ?? .other
-        let severity = DamageSeverity(rawValue: item.severity) ?? .low
 
         var boundingBox: DamageBoundingBox?
         if let box = item.boundingBox {
@@ -449,7 +435,7 @@ final class DamageAnalysisService: ObservableObject {
 
         return DetectedDamage(
             type: damageType,
-            severity: severity,
+            severity: .low,
             description: item.description,
             surfaceType: surfaceType,
             surfaceId: surfaceId,
@@ -463,41 +449,6 @@ final class DamageAnalysisService: ObservableObject {
             distanceFromCamera: distanceFromCamera,
             measurementConfidence: measurementConfidence
         )
-    }
-
-    private func determineOverallCondition(from conditions: [OverallCondition], damages: [DetectedDamage]) -> OverallCondition {
-        // If no damages found, return best condition from responses
-        if damages.isEmpty {
-            return conditions.min(by: { conditionPriority($0) < conditionPriority($1) }) ?? .excellent
-        }
-
-        // If critical damages exist, condition is critical
-        if damages.contains(where: { $0.severity == .critical }) {
-            return .critical
-        }
-
-        // If high severity damages exist, condition is poor
-        if damages.contains(where: { $0.severity == .high }) {
-            return .poor
-        }
-
-        // If moderate damages exist, condition is fair
-        if damages.contains(where: { $0.severity == .moderate }) {
-            return .fair
-        }
-
-        // Only low severity damages
-        return .good
-    }
-
-    private func conditionPriority(_ condition: OverallCondition) -> Int {
-        switch condition {
-        case .excellent: return 0
-        case .good: return 1
-        case .fair: return 2
-        case .poor: return 3
-        case .critical: return 4
-        }
     }
 
     // MARK: - Damage Deduplication

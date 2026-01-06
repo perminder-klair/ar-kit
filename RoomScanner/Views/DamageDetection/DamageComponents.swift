@@ -167,30 +167,15 @@ struct DamageCard: View {
 
             // Content
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(damage.type.displayName)
-                        .font(.headline)
-                    Spacer()
-                    SeverityBadge(severity: damage.severity)
-                }
+                Text(damage.type.displayName)
+                    .font(.headline)
 
                 Text(damage.description)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
 
-                HStack(spacing: 8) {
-                    SurfaceTag(surfaceType: damage.surfaceType)
-
-                    if damage.confidence >= 0.8 {
-                        HStack(spacing: 2) {
-                            Image(systemName: "checkmark.seal.fill")
-                            Text("High confidence")
-                        }
-                        .font(.caption2)
-                        .foregroundColor(.green)
-                    }
-                }
+                SurfaceTag(surfaceType: damage.surfaceType)
             }
 
             Image(systemName: "chevron.right")
@@ -211,12 +196,9 @@ struct AnalysisSummaryCard: View {
     var body: some View {
         VStack(spacing: 16) {
             // Header
-            HStack {
-                Text("Analysis Summary")
-                    .font(.headline)
-                Spacer()
-                ConditionBadge(condition: result.overallCondition)
-            }
+            Text("Analysis Summary")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             Divider()
 
@@ -224,28 +206,14 @@ struct AnalysisSummaryCard: View {
             HStack(spacing: 20) {
                 StatItem(
                     value: "\(result.detectedDamages.count)",
-                    label: "Total Issues",
+                    label: "Issues Found",
                     icon: "exclamationmark.circle",
-                    color: .primary
-                )
-
-                StatItem(
-                    value: "\(result.criticalCount)",
-                    label: "Critical",
-                    icon: "xmark.circle",
-                    color: .red
-                )
-
-                StatItem(
-                    value: "\(result.highPriorityCount)",
-                    label: "High Priority",
-                    icon: "exclamationmark.triangle",
                     color: .orange
                 )
 
                 StatItem(
                     value: "\(result.analyzedImageCount)",
-                    label: "Images",
+                    label: "Images Analyzed",
                     icon: "photo",
                     color: .blue
                 )

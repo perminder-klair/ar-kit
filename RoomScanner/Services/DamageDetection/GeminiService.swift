@@ -299,18 +299,16 @@ final class GeminiService: ObservableObject {
             "damages": [
                 {
                     "type": "crack|water_damage|hole|weathering|mold|peeling|stain|structural_damage|other",
-                    "severity": "low|moderate|high|critical",
                     "description": "Brief description of the damage",
                     "confidence": 0.0 to 1.0,
                     "boundingBox": {"x": 0.0-1.0, "y": 0.0-1.0, "width": 0.0-1.0, "height": 0.0-1.0},
                     "recommendation": "Suggested action"
                 }
             ],
-            "overallCondition": "excellent|good|fair|poor|critical",
             "summary": "Brief overall assessment"
         }
 
-        If no damage is detected, return an empty damages array with overallCondition as "excellent" or "good".
+        If no damage is detected, return an empty damages array.
         Be thorough but avoid false positives. Only report damage you are confident about.
         """
     }
@@ -395,12 +393,10 @@ struct GeminiAPIResponse: Codable {
 
 struct DamageAnalysisResponse: Codable {
     let damages: [DamageItem]
-    let overallCondition: String
     let summary: String?
 
     struct DamageItem: Codable {
         let type: String
-        let severity: String
         let description: String
         let confidence: Float
         let boundingBox: BoundingBoxData?

@@ -234,11 +234,13 @@ struct DamageAnalysisView: View {
                 } else {
                     EmptyDamageStateView()
                 }
-
-                // Action buttons
-                actionButtons
             }
             .padding()
+        }
+        .safeAreaInset(edge: .bottom) {
+            generateReportButton
+                .padding()
+                .background(.ultraThinMaterial)
         }
     }
 
@@ -272,7 +274,7 @@ struct DamageAnalysisView: View {
         }
     }
 
-    private var actionButtons: some View {
+    private var generateReportButton: some View {
         Button {
             appState.navigateTo(.report)
         } label: {

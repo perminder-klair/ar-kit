@@ -3,11 +3,23 @@ import SwiftUI
 /// Detailed view for a single damage item
 struct DamageDetailView: View {
     let damage: DetectedDamage
+    @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
+
+    private var damageImage: UIImage? {
+        let frames = appState.frameCaptureService.capturedFrames
+        guard damage.imageIndex < frames.count else { return nil }
+        return UIImage(data: frames[damage.imageIndex].imageData)
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                // Captured image with bounding box
+                if let image = damageImage {
+                    imageSection(image)
+                }
+
                 // Header
                 headerSection
 
@@ -35,6 +47,31 @@ struct DamageDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    private func imageSection(_ image: UIImage) -> some View {
+        ZStack {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+
+            // Bounding box overlay
+            if let bbox = damage.boundingBox {
+                GeometryReader { geo in
+                    Rectangle()
+                        .stroke(Color.orange, lineWidth: 3)
+                        .frame(
+                            width: CGFloat(bbox.width) * geo.size.width,
+                            height: CGFloat(bbox.height) * geo.size.height
+                        )
+                        .position(
+                            x: CGFloat(bbox.x + bbox.width / 2) * geo.size.width,
+                            y: CGFloat(bbox.y + bbox.height / 2) * geo.size.height
+                        )
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 16) {
@@ -49,10 +86,7 @@ struct DamageDetailView: View {
                         .font(.title2)
                         .fontWeight(.bold)
 
-                    HStack(spacing: 8) {
-                        SeverityBadge(severity: damage.severity)
-                        SurfaceTag(surfaceType: damage.surfaceType)
-                    }
+                    SurfaceTag(surfaceType: damage.surfaceType)
                 }
             }
         }
@@ -141,7 +175,6 @@ struct DamageDetailView: View {
                 DamageInfoRow(label: "Confidence", value: "\(Int(damage.confidence * 100))%")
                 DamageInfoRow(label: "Surface Type", value: damage.surfaceType.displayName)
                 DamageInfoRow(label: "Damage Type", value: damage.type.rawValue)
-                DamageInfoRow(label: "Severity Level", value: "\(damage.severity.numericValue)/4")
 
                 if let bbox = damage.boundingBox {
                     DamageInfoRow(
@@ -175,41 +208,25 @@ private struct DamageInfoRow: View {
     }
 }
 
-// MARK: - Severity Explanation
-
-extension DamageSeverity {
-    var explanation: String {
-        switch self {
-        case .low:
-            return "Minor cosmetic issue. Monitor for changes over time."
-        case .moderate:
-            return "Noticeable damage. Consider addressing in routine maintenance."
-        case .high:
-            return "Significant damage requiring attention soon."
-        case .critical:
-            return "Severe damage requiring immediate professional attention."
-        }
-    }
-}
-
 #Preview("Without Measurements") {
     NavigationStack {
         DamageDetailView(damage: DetectedDamage(
             type: .crack,
-            severity: .high,
+            severity: .low,
             description: "A significant crack running diagonally across the wall surface, approximately 30cm in length with visible depth.",
             surfaceType: .wall,
             confidence: 0.92,
             recommendation: "This crack should be inspected by a professional to determine if it's structural. Consider filling with appropriate filler for cosmetic repair if non-structural."
         ))
     }
+    .environmentObject(AppState())
 }
 
 #Preview("With Measurements") {
     NavigationStack {
         DamageDetailView(damage: DetectedDamage(
             type: .waterDamage,
-            severity: .moderate,
+            severity: .low,
             description: "Water stain on ceiling with visible discoloration and potential mold growth around edges.",
             surfaceType: .ceiling,
             confidence: 0.88,
@@ -221,4 +238,5 @@ extension DamageSeverity {
             measurementConfidence: 0.92
         ))
     }
+    .environmentObject(AppState())
 }

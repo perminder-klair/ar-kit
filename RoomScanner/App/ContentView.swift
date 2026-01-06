@@ -24,9 +24,6 @@ struct ContentView: View {
                 case .damageAnalysis:
                     DamageAnalysisView()
 
-                case .damageResults:
-                    DamageResultsView()
-
                 case .report:
                     if let room = appState.capturedRoom {
                         ReportView(capturedRoom: room)

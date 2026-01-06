@@ -28,7 +28,6 @@
 		7E6C1D162F0C0283000AE92A /* ImageCaptureHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D062F0C0283000AE92A /* ImageCaptureHelper.swift */; };
 		7E6C1D172F0C0283000AE92A /* DamageComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D072F0C0283000AE92A /* DamageComponents.swift */; };
 		7E6C1D182F0C0283000AE92A /* DamageAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D082F0C0283000AE92A /* DamageAnalysisView.swift */; };
-		7E6C1D192F0C0283000AE92A /* DamageResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D092F0C0283000AE92A /* DamageResultsView.swift */; };
 		7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */; };
 		7E6C1D1B2F0C0284000AE92A /* ARFrameCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D1C2F0C0284000AE92A /* ARFrameCaptureService.swift */; };
 		7E6C1D1E2F0C0285000AE92A /* DamageSizeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D1D2F0C0285000AE92A /* DamageSizeCalculator.swift */; };
@@ -60,7 +59,6 @@
 		7E6C1D062F0C0283000AE92A /* ImageCaptureHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCaptureHelper.swift; sourceTree = "<group>"; };
 		7E6C1D072F0C0283000AE92A /* DamageComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageComponents.swift; sourceTree = "<group>"; };
 		7E6C1D082F0C0283000AE92A /* DamageAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageAnalysisView.swift; sourceTree = "<group>"; };
-		7E6C1D092F0C0283000AE92A /* DamageResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageResultsView.swift; sourceTree = "<group>"; };
 		7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageDetailView.swift; sourceTree = "<group>"; };
 		7E6C1D1C2F0C0284000AE92A /* ARFrameCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARFrameCaptureService.swift; sourceTree = "<group>"; };
 		7E6C1D1D2F0C0285000AE92A /* DamageSizeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageSizeCalculator.swift; sourceTree = "<group>"; };
@@ -222,7 +220,6 @@
 			children = (
 				7E6C1D072F0C0283000AE92A /* DamageComponents.swift */,
 				7E6C1D082F0C0283000AE92A /* DamageAnalysisView.swift */,
-				7E6C1D092F0C0283000AE92A /* DamageResultsView.swift */,
 				7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */,
 				7E6C1D232F0C0286000AE92A /* DepthCaptureView.swift */,
 			);
@@ -338,7 +335,6 @@
 				7E6C1D162F0C0283000AE92A /* ImageCaptureHelper.swift in Sources */,
 				7E6C1D172F0C0283000AE92A /* DamageComponents.swift in Sources */,
 				7E6C1D182F0C0283000AE92A /* DamageAnalysisView.swift in Sources */,
-				7E6C1D192F0C0283000AE92A /* DamageResultsView.swift in Sources */,
 				7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */,
 				7E6C1D1B2F0C0284000AE92A /* ARFrameCaptureService.swift in Sources */,
 				7E6C1D1E2F0C0285000AE92A /* DamageSizeCalculator.swift in Sources */,

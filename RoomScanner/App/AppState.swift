@@ -15,7 +15,6 @@ final class AppState: ObservableObject {
         case dimensions
         case depthCapture    // Capture depth frames for damage size measurement
         case damageAnalysis
-        case damageResults
         case report
     }
 
@@ -98,11 +97,6 @@ final class AppState: ObservableObject {
         }
 
         navigateTo(.damageAnalysis)
-    }
-
-    func completeDamageAnalysis(with result: DamageAnalysisResult) {
-        damageAnalysisResult = result
-        navigateTo(.damageResults)
     }
 
     func cancelDamageAnalysis() {

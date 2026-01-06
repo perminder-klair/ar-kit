@@ -6,8 +6,9 @@ This document explains how the damage detection system works, including AI-power
 
 The damage detection system combines:
 1. **Gemini Vision AI** - Identifies damage types (cracks, water damage, mold, etc.) and provides bounding boxes
-2. **LiDAR Depth Capture** - Captures depth maps during AR scanning
+2. **LiDAR Depth Capture** - Captures depth maps during manual AR frame capture
 3. **Size Calculation** - Converts 2D bounding boxes to real-world measurements using depth data and camera intrinsics
+4. **Deduplication** - Removes duplicate detections across multiple frames using IoU (Intersection over Union)
 
 ## User Flow
 
@@ -18,30 +19,37 @@ The damage detection system combines:
          │ Start Scan
          ▼
 ┌─────────────────┐
-│  Room Scan View │  ← RoomCaptureSession (screenshots captured)
+│  Room Scan View │  ← RoomCaptureSession
 └────────┬────────┘
          │ Complete Scan
          ▼
 ┌─────────────────┐
 │ Dimensions View │  ← View room measurements
 └────────┬────────┘
-         │ "Capture for Damage Analysis"
+         │ "Analyze Damage" button
          ▼
 ┌─────────────────┐
 │ Depth Capture   │  ← ARSession with LiDAR depth
-│     View        │     User walks around capturing frames
+│     View        │     User MANUALLY taps to capture frames
+│                 │     (point at damage, tap capture button)
 └────────┬────────┘
-         │ "Done" (10-15 frames captured)
+         │ "Done" (1-15 frames captured)
          ▼
 ┌─────────────────┐
-│ Damage Analysis │  ← Gemini AI analyzes images
-│     View        │
+│ Damage Analysis │  ← Review captures or select manual images
+│     View        │     Start Gemini AI analysis
 └────────┬────────┘
          │ Analysis Complete
          ▼
 ┌─────────────────┐
-│ Damage Results  │  ← Shows damage with real sizes
-│     View        │     e.g., "32cm × 18cm (576 cm²)"
+│ Damage Results  │  ← Filterable/sortable damage list
+│     View        │     Filter by severity, surface type
+└────────┬────────┘
+         │ Tap damage item
+         ▼
+┌─────────────────┐
+│ Damage Detail   │  ← Single damage deep-dive
+│     View        │     Shows size, recommendations, confidence
 └─────────────────┘
 ```
 
@@ -52,7 +60,7 @@ Running `RoomCaptureSession` and `ARSession` simultaneously causes camera resour
 - Both sessions fight for exclusive camera access
 
 **Solution**: Sequential capture separates the two AR sessions:
-1. Room scan uses `RoomCaptureSession` alone (with screenshot fallback)
+1. Room scan uses `RoomCaptureSession` alone
 2. Depth capture uses `ARSession` alone after scan completes
 
 ## Architecture
@@ -62,10 +70,16 @@ Running `RoomCaptureSession` and `ARSession` simultaneously causes camera resour
 | Component | File | Purpose |
 |-----------|------|---------|
 | `ARFrameCaptureService` | `Services/DamageDetection/ARFrameCaptureService.swift` | Captures and stores frames with depth data |
-| `DamageSizeCalculator` | `Services/DamageDetection/DamageSizeCalculator.swift` | Converts bounding boxes to real measurements |
-| `GeminiService` | `Services/DamageDetection/GeminiService.swift` | AI damage detection via Gemini Vision API |
-| `DamageAnalysisService` | `Services/DamageDetection/DamageAnalysisService.swift` | Orchestrates the analysis pipeline |
-| `DepthCaptureView` | `Views/DamageDetection/DepthCaptureView.swift` | UI for capturing depth frames |
+| `DamageSizeCalculator` | `Services/DamageDetection/DamageSizeCalculator.swift` | Converts bounding boxes to real measurements using 3x3 median sampling |
+| `GeminiService` | `Services/DamageDetection/GeminiService.swift` | AI damage detection via Gemini Vision API (`gemini-3-flash-preview`) |
+| `DamageAnalysisService` | `Services/DamageDetection/DamageAnalysisService.swift` | Orchestrates analysis pipeline with deduplication |
+| `ImageCaptureHelper` | `Services/DamageDetection/ImageCaptureHelper.swift` | Image compression and surface association |
+| `GeminiConfig` | `Config/GeminiConfig.swift` | API key management (3-tier priority) |
+| `DepthCaptureView` | `Views/DamageDetection/DepthCaptureView.swift` | UI for manual depth frame capture |
+| `DamageAnalysisView` | `Views/DamageDetection/DamageAnalysisView.swift` | Review captures, start analysis |
+| `DamageResultsView` | `Views/DamageDetection/DamageResultsView.swift` | Filterable/sortable results list |
+| `DamageDetailView` | `Views/DamageDetection/DamageDetailView.swift` | Single damage detail view |
+| `DamageComponents` | `Views/DamageDetection/DamageComponents.swift` | Reusable UI components (badges, cards) |
 
 ### Data Flow
 
@@ -117,6 +131,16 @@ Running `RoomCaptureSession` and `ARSession` simultaneously causes camera resour
                         │
                         ▼
                ┌────────────────┐
+               │ Damage Analysis│
+               │    Service     │
+               │                │
+               │ - Combines     │
+               │ - Deduplicates │
+               │ - Ranks        │
+               └───────┬────────┘
+                       │
+                       ▼
+               ┌────────────────┐
                │ DetectedDamage │
                │                │
                │ - type         │
@@ -128,6 +152,33 @@ Running `RoomCaptureSession` and `ARSession` simultaneously causes camera resour
                │ - confidence   │
                └────────────────┘
 ```
+
+## API Configuration
+
+The Gemini API key is loaded with 3-tier priority:
+
+```swift
+// GeminiConfig.swift
+static var apiKey: String? {
+    // 1. Environment variable (CI/CD)
+    if let envKey = ProcessInfo.processInfo.environment["GEMINI_API_KEY"] {
+        return envKey
+    }
+
+    // 2. GeminiAPIKey.plist in bundle
+    if let plistKey = loadFromPlist() {
+        return plistKey
+    }
+
+    // 3. UserDefaults (user-entered)
+    return UserDefaults.standard.string(forKey: "GeminiAPIKey")
+}
+```
+
+**Setup Options:**
+- Set `GEMINI_API_KEY` environment variable
+- Create `GeminiAPIKey.plist` with `API_KEY` entry
+- Enter key in app settings (stored in UserDefaults)
 
 ## CapturedFrame Structure
 
@@ -189,7 +240,9 @@ fx, fy = focal lengths (pixels)
 cx, cy = principal point (image center)
 ```
 
-### Implementation
+### Implementation with 3x3 Median Sampling
+
+The size calculator uses robust depth sampling to handle noise:
 
 ```swift
 func calculateSize(
@@ -209,14 +262,29 @@ func calculateSize(
     let pixelH = Int(boundingBox.height * Float(imageHeight))
 
     // 2. Map pixel coordinates to depth buffer coordinates
-    //    (depth map is typically lower resolution than RGB image)
     let scaleX = Float(depthWidth) / Float(imageWidth)
     let scaleY = Float(depthHeight) / Float(imageHeight)
     let depthCenterX = Int(Float(pixelX + pixelW/2) * scaleX)
     let depthCenterY = Int(Float(pixelY + pixelH/2) * scaleY)
 
-    // 3. Sample depth at bounding box center
-    let centerDepth = getDepthAt(x: depthCenterX, y: depthCenterY)
+    // 3. Sample depth using 3x3 grid with median filtering
+    //    (more robust than single center point)
+    var depthSamples: [Float] = []
+    for dy in -1...1 {
+        for dx in -1...1 {
+            let sampleX = clamp(depthCenterX + dx, 0, depthWidth - 1)
+            let sampleY = clamp(depthCenterY + dy, 0, depthHeight - 1)
+            let depth = getDepthAt(x: sampleX, y: sampleY)
+            if depth.isFinite && depth > 0.1 && depth < 5.0 {
+                depthSamples.append(depth)
+            }
+        }
+    }
+
+    // Use median of valid samples
+    guard !depthSamples.isEmpty else { return nil }
+    depthSamples.sort()
+    let centerDepth = depthSamples[depthSamples.count / 2]
 
     // 4. Extract focal lengths from intrinsics
     let fx = cameraIntrinsics[0][0]
@@ -231,17 +299,58 @@ func calculateSize(
         height: realHeight,
         area: realWidth * realHeight,
         depth: centerDepth,
-        confidence: calculateConfidence(...)
+        confidence: calculateConfidence(depth: centerDepth, bboxSize: boundingBox.area)
     )
 }
 ```
 
-## Gemini Prompt for Bounding Boxes
+### Confidence Calculation
 
-The Gemini prompt requests precise bounding boxes for accurate size calculation:
+Measurement confidence is reduced for:
+- **Distance > 2m**: 0.9× multiplier
+- **Distance > 3m**: 0.8× multiplier
+- **Small bbox (< 1% of image)**: 0.7× multiplier
+- **Small bbox (< 5% of image)**: 0.85× multiplier
+- **Large bbox (> 50% of image)**: 0.8× multiplier
+
+## Deduplication Logic
+
+When the user captures the same damage from multiple angles, duplicates are removed:
+
+```swift
+// IoU (Intersection over Union) calculation
+func calculateIoU(_ box1: DamageBoundingBox, _ box2: DamageBoundingBox) -> Float {
+    let x1 = max(box1.x, box2.x)
+    let y1 = max(box1.y, box2.y)
+    let x2 = min(box1.x + box1.width, box2.x + box2.width)
+    let y2 = min(box1.y + box1.height, box2.y + box2.height)
+
+    let intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    let union = box1.area + box2.area - intersection
+
+    return intersection / union
+}
+
+// Deduplication threshold: IoU > 0.3 = same damage
+// When duplicates found, keep the one with:
+// 1. Highest confidence, or
+// 2. Closest distance (better depth accuracy)
+```
+
+## Gemini API Integration
+
+### Model & Configuration
+
+- **Model**: `gemini-3-flash-preview`
+- **Base URL**: `https://generativelanguage.googleapis.com/v1beta`
+- **Max image size**: 20MB
+- **Timeout**: 60s request, 120s resource
+- **Rate limiting**: 0.5s delay between requests
+
+### Prompt for Bounding Boxes
 
 ```
-Analyze this image for visible damage.
+Analyze this image for visible damage to room surfaces.
 
 IMPORTANT: For each damage found, provide a PRECISE bounding box
 that tightly fits the damage area.
@@ -249,11 +358,14 @@ that tightly fits the damage area.
 - width, height: size as fraction of image (0.0-1.0)
 - The box should closely outline ONLY the damaged area
 
-Response format:
+Damage types to look for:
+- crack, water_damage, hole, weathering, mold, peeling, stain, structural_damage, other
+
+Response format (JSON only, no markdown):
 {
     "damages": [
         {
-            "type": "crack|water_damage|hole|mold|...",
+            "type": "crack|water_damage|hole|weathering|mold|peeling|stain|structural_damage|other",
             "severity": "low|moderate|high|critical",
             "description": "Brief description",
             "confidence": 0.0-1.0,
@@ -265,7 +377,9 @@ Response format:
             },
             "recommendation": "Suggested action"
         }
-    ]
+    ],
+    "overallCondition": "excellent|good|fair|poor|critical",
+    "summary": "Brief overall assessment"
 }
 ```
 
@@ -280,6 +394,7 @@ struct DetectedDamage: Identifiable, Codable {
     let severity: DamageSeverity
     let description: String
     let surfaceType: SurfaceType
+    let surfaceId: String?        // Links to CapturedRoom surface
     let confidence: Float
     let boundingBox: DamageBoundingBox?
     let recommendation: String?
@@ -295,21 +410,57 @@ struct DetectedDamage: Identifiable, Codable {
         realWidth != nil && realHeight != nil
     }
 
+    // Formatted output with automatic unit selection
+    var formattedDimensions: String? {
+        guard let w = realWidth, let h = realHeight else { return nil }
+        if w < 0.01 || h < 0.01 {
+            return String(format: "%.1f × %.1f mm", w * 1000, h * 1000)
+        }
+        return String(format: "%.1f × %.1f cm", w * 100, h * 100)
+    }
+
     var formattedArea: String? {
         guard let area = realArea else { return nil }
-        if area < 0.01 {
-            return String(format: "%.1f cm²", area * 10000)
+        if area < 0.0001 {
+            return String(format: "%.1f mm²", area * 1_000_000)
+        } else if area < 0.01 {
+            return String(format: "%.1f cm²", area * 10_000)
         } else {
             return String(format: "%.2f m²", area)
         }
     }
+}
+```
 
-    var formattedDimensions: String? {
-        guard let w = realWidth, let h = realHeight else { return nil }
-        return String(format: "%.1f × %.1f cm", w * 100, h * 100)
+## Error Handling
+
+The system handles errors gracefully:
+
+### Partial Success
+If some images fail analysis, results from successful images are still returned:
+```swift
+// Collects all successful detections even if some frames fail
+var allDetections: [DetectedDamage] = []
+for frame in frames {
+    do {
+        let result = try await geminiService.analyzeImage(frame.imageData)
+        allDetections.append(contentsOf: result.damages)
+    } catch {
+        // Log error, continue with other frames
+        print("Frame analysis failed: \(error)")
     }
 }
 ```
+
+### API Error Types
+- `invalidAPIKey` - Check GeminiConfig setup
+- `rateLimited` (429) - Automatic 0.5s delay between requests
+- `quotaExceeded` (403) - Daily limit reached
+- `imageTooLarge` - Compress image before retry
+- `networkError` - Check connectivity
+
+### Fallback Without Depth
+When depth data is unavailable, size estimation falls back to surface-based calculation with lower confidence (0.7×).
 
 ## Exports
 
@@ -352,9 +503,9 @@ The PDF report includes a "Size Measurements" section showing:
 4. **Surface texture** - Flat surfaces are more accurate
 5. **Depth map resolution** - LiDAR provides ~256×192 depth pixels
 
-### Confidence Calculation
+### Measurement Confidence
 
-Measurement confidence is based on:
+Based on:
 - Depth variance within bounding box (lower = better)
 - Distance from camera (1-3m optimal)
 - Bounding box size (not too small/large)
@@ -387,3 +538,9 @@ If you see `FigCaptureSourceRemote err=-12784`:
 - This means two AR sessions are fighting for camera
 - Ensure sequential capture flow is being used
 - Room scan and depth capture should not run simultaneously
+
+### API Errors
+
+- **401 Unauthorized**: Check API key configuration
+- **429 Rate Limited**: Reduce capture frequency, wait before retry
+- **403 Quota Exceeded**: Check Gemini API usage limits

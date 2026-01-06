@@ -1,6 +1,5 @@
 import SwiftUI
 import RoomPlan
-import simd
 
 /// View displaying room dimensions and measurements
 struct DimensionsView: View {
@@ -9,12 +8,6 @@ struct DimensionsView: View {
 
     @State private var dimensions: CapturedRoomProcessor.RoomDimensions?
     @State private var selectedUnit: CapturedRoomProcessor.RoomDimensions.MeasurementUnit = .meters
-    @State private var viewMode: ViewMode = .model3D
-
-    enum ViewMode: String, CaseIterable {
-        case floorPlan = "2D Floor Plan"
-        case model3D = "3D Model"
-    }
 
     private let processor = CapturedRoomProcessor()
 
@@ -26,29 +19,12 @@ struct DimensionsView: View {
                     SummaryCard(dimensions: dims, unit: selectedUnit)
                 }
 
-                // View Mode Picker
-                Picker("View Mode", selection: $viewMode) {
-                    ForEach(ViewMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-
-                // Room Visualization (2D or 3D)
-                Group {
-                    switch viewMode {
-                    case .floorPlan:
-                        FloorPlanPreview(capturedRoom: capturedRoom)
-                            .frame(height: 250)
-                    case .model3D:
-                        RoomModelViewer(capturedRoom: capturedRoom)
-                            .frame(height: 300)
-                    }
-                }
-                .background(Color(.systemGray6))
-                .cornerRadius(16)
-                .padding(.horizontal)
+                // Room 3D Model
+                RoomModelViewer(capturedRoom: capturedRoom)
+                    .frame(height: 300)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(16)
+                    .padding(.horizontal)
 
                 // Detailed Measurements
                 if let dims = dimensions {
@@ -194,210 +170,6 @@ struct CountItem: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-    }
-}
-
-// MARK: - Floor Plan Preview
-
-struct FloorPlanPreview: View {
-    let capturedRoom: CapturedRoom
-
-    var body: some View {
-        GeometryReader { geometry in
-            Canvas { context, size in
-                drawFloorPlan(context: context, size: size)
-            }
-        }
-        .padding()
-    }
-
-    private func drawFloorPlan(context: GraphicsContext, size: CGSize) {
-        // Try floor polygon first, fallback to inferring from walls
-        let corners: [simd_float3]
-
-        if let floor = capturedRoom.floors.first, !floor.polygonCorners.isEmpty {
-            corners = floor.polygonCorners
-        } else if !capturedRoom.walls.isEmpty {
-            corners = inferFloorFromWalls(capturedRoom.walls)
-        } else {
-            // No data - draw placeholder
-            drawPlaceholder(context: context, size: size)
-            return
-        }
-
-        guard !corners.isEmpty else {
-            drawPlaceholder(context: context, size: size)
-            return
-        }
-
-        // Find bounds
-        var minX: Float = .infinity
-        var maxX: Float = -.infinity
-        var minZ: Float = .infinity
-        var maxZ: Float = -.infinity
-
-        for corner in corners {
-            minX = min(minX, corner.x)
-            maxX = max(maxX, corner.x)
-            minZ = min(minZ, corner.z)
-            maxZ = max(maxZ, corner.z)
-        }
-
-        let roomWidth = maxX - minX
-        let roomDepth = maxZ - minZ
-
-        guard roomWidth > 0, roomDepth > 0 else { return }
-
-        // Calculate scale to fit in view with padding
-        let padding: CGFloat = 40
-        let availableWidth = size.width - padding * 2
-        let availableHeight = size.height - padding * 2
-        let scale = min(availableWidth / CGFloat(roomWidth), availableHeight / CGFloat(roomDepth))
-
-        // Center offset
-        let offsetX = padding + (availableWidth - CGFloat(roomWidth) * scale) / 2
-        let offsetY = padding + (availableHeight - CGFloat(roomDepth) * scale) / 2
-
-        // Transform function
-        func transform(_ point: simd_float3) -> CGPoint {
-            CGPoint(
-                x: offsetX + CGFloat(point.x - minX) * scale,
-                y: offsetY + CGFloat(point.z - minZ) * scale
-            )
-        }
-
-        // Draw floor polygon
-        var path = Path()
-        if let first = corners.first {
-            path.move(to: transform(first))
-            for corner in corners.dropFirst() {
-                path.addLine(to: transform(corner))
-            }
-            path.closeSubpath()
-        }
-
-        context.fill(path, with: .color(.blue.opacity(0.1)))
-        context.stroke(path, with: .color(.blue), lineWidth: 2)
-
-        // Draw walls
-        for wall in capturedRoom.walls {
-            let pos = simd_float3(
-                wall.transform.columns.3.x,
-                wall.transform.columns.3.y,
-                wall.transform.columns.3.z
-            )
-            let point = transform(pos)
-            let rect = CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6)
-            context.fill(Path(ellipseIn: rect), with: .color(.gray))
-        }
-
-        // Draw doors
-        for door in capturedRoom.doors {
-            let pos = simd_float3(
-                door.transform.columns.3.x,
-                door.transform.columns.3.y,
-                door.transform.columns.3.z
-            )
-            let point = transform(pos)
-            let rect = CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)
-            context.fill(Path(rect), with: .color(.brown))
-        }
-
-        // Draw windows
-        for window in capturedRoom.windows {
-            let pos = simd_float3(
-                window.transform.columns.3.x,
-                window.transform.columns.3.y,
-                window.transform.columns.3.z
-            )
-            let point = transform(pos)
-            let rect = CGRect(x: point.x - 4, y: point.y - 2, width: 8, height: 4)
-            context.fill(Path(rect), with: .color(.cyan))
-        }
-    }
-
-    private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
-        // Draw border
-        let rect = CGRect(x: 20, y: 20, width: size.width - 40, height: size.height - 40)
-        context.stroke(Path(rect), with: .color(.gray.opacity(0.3)), lineWidth: 1)
-
-        // Draw "No floor data" message
-        let text = Text("No floor plan data available")
-            .font(.caption)
-            .foregroundColor(.secondary)
-        context.draw(text, at: CGPoint(x: size.width / 2, y: size.height / 2), anchor: .center)
-    }
-
-    /// Infer floor outline from wall positions using convex hull
-    private func inferFloorFromWalls(_ walls: [CapturedRoom.Surface]) -> [simd_float3] {
-        var points: [simd_float3] = []
-
-        for wall in walls {
-            // Wall center position
-            let pos = simd_float3(
-                wall.transform.columns.3.x,
-                0,
-                wall.transform.columns.3.z
-            )
-            points.append(pos)
-
-            // Wall corners based on dimensions and rotation
-            let halfWidth = wall.dimensions.x / 2
-            let rotation = atan2(wall.transform.columns.0.z, wall.transform.columns.0.x)
-
-            let corner1 = simd_float3(
-                pos.x + halfWidth * cos(rotation),
-                0,
-                pos.z + halfWidth * sin(rotation)
-            )
-            let corner2 = simd_float3(
-                pos.x - halfWidth * cos(rotation),
-                0,
-                pos.z - halfWidth * sin(rotation)
-            )
-            points.append(corner1)
-            points.append(corner2)
-        }
-
-        return convexHull(points)
-    }
-
-    /// Compute convex hull using Graham scan algorithm
-    private func convexHull(_ points: [simd_float3]) -> [simd_float3] {
-        guard points.count >= 3 else { return points }
-
-        // Find lowest point (smallest z, then smallest x)
-        var sorted = points.sorted { a, b in
-            if a.z != b.z { return a.z < b.z }
-            return a.x < b.x
-        }
-
-        let pivot = sorted.removeFirst()
-
-        // Sort by polar angle with respect to pivot
-        sorted.sort { a, b in
-            let angleA = atan2(a.z - pivot.z, a.x - pivot.x)
-            let angleB = atan2(b.z - pivot.z, b.x - pivot.x)
-            return angleA < angleB
-        }
-
-        var hull: [simd_float3] = [pivot]
-
-        for point in sorted {
-            while hull.count >= 2 {
-                let a = hull[hull.count - 2]
-                let b = hull[hull.count - 1]
-                let cross = (b.x - a.x) * (point.z - a.z) - (b.z - a.z) * (point.x - a.x)
-                if cross <= 0 {
-                    hull.removeLast()
-                } else {
-                    break
-                }
-            }
-            hull.append(point)
-        }
-
-        return hull
     }
 }
 

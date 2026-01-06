@@ -283,25 +283,17 @@ struct RoomScanView: View {
             // Controls overlay (shown when permission granted)
             if cameraPermissionGranted {
                 VStack {
-                    // Top status bar
+                    // Top status bar with controls
                     ScanStatusBar(
                         detectedItems: appState.roomCaptureService.detectedItems,
-                        capturedFrames: appState.capturedFrameCount
+                        capturedFrames: appState.capturedFrameCount,
+                        onStop: stopScanning,
+                        onCancel: { showCancelAlert = true }
                     )
                     .padding(.top, 60)
                     .padding(.horizontal)
 
                     Spacer()
-
-                    // Bottom controls
-                    ScanControlsView(
-                        isScanning: appState.isScanning,
-                        onStart: startScanning,
-                        onStop: stopScanning,
-                        onCancel: { showCancelAlert = true }
-                    )
-                    .padding(.bottom, 40)
-                    .padding(.horizontal)
                 }
             }
         }
@@ -346,14 +338,6 @@ struct RoomScanView: View {
         }
     }
 
-    private func startScanning() {
-        guard RoomCaptureService.isSupported else {
-            appState.scanError = "RoomPlan not supported on this device"
-            return
-        }
-        viewController?.startSession()
-    }
-
     private func stopScanning() {
         viewController?.stopSession()
     }
@@ -364,18 +348,43 @@ struct RoomScanView: View {
 struct ScanStatusBar: View {
     let detectedItems: RoomCaptureService.DetectedItems
     var capturedFrames: Int = 0
+    let onStop: () -> Void
+    let onCancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            StatusItem(icon: "rectangle.portrait", count: detectedItems.wallCount, label: "Walls")
-            StatusItem(icon: "door.left.hand.closed", count: detectedItems.doorCount, label: "Doors")
-            StatusItem(icon: "window.vertical.closed", count: detectedItems.windowCount, label: "Windows")
-            StatusItem(icon: "camera.fill", count: capturedFrames, label: "Photos")
+        HStack(spacing: 12) {
+            // Cancel button (left)
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(.white.opacity(0.2))
+                    .clipShape(Circle())
+            }
+
+            // Stats in center
+            HStack(spacing: 12) {
+                StatusItem(icon: "rectangle.portrait", count: detectedItems.wallCount, label: "Walls")
+                StatusItem(icon: "door.left.hand.closed", count: detectedItems.doorCount, label: "Doors")
+                StatusItem(icon: "window.vertical.closed", count: detectedItems.windowCount, label: "Windows")
+                StatusItem(icon: "camera.fill", count: capturedFrames, label: "Photos")
+            }
+
+            // Stop button (right)
+            Button(action: onStop) {
+                Image(systemName: "stop.fill")
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(.red)
+                    .clipShape(Circle())
+            }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .background(.ultraThinMaterial)
-        .cornerRadius(16)
+        .cornerRadius(24)
     }
 }
 
@@ -395,56 +404,6 @@ struct StatusItem: View {
                 .foregroundStyle(.secondary)
         }
         .frame(minWidth: 50)
-    }
-}
-
-// MARK: - Controls
-
-struct ScanControlsView: View {
-    let isScanning: Bool
-    let onStart: () -> Void
-    let onStop: () -> Void
-    let onCancel: () -> Void
-
-    var body: some View {
-        HStack(spacing: 30) {
-            // Cancel button
-            Button(action: onCancel) {
-                Image(systemName: "xmark")
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .frame(width: 50, height: 50)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-            }
-
-            // Main action button
-            Button(action: isScanning ? onStop : onStart) {
-                ZStack {
-                    Circle()
-                        .fill(isScanning ? .red : .white)
-                        .frame(width: 70, height: 70)
-
-                    if isScanning {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(.white)
-                            .frame(width: 24, height: 24)
-                    } else {
-                        Circle()
-                            .stroke(.black, lineWidth: 3)
-                            .frame(width: 60, height: 60)
-                    }
-                }
-            }
-
-            // Placeholder for symmetry
-            Color.clear
-                .frame(width: 50, height: 50)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(.ultraThinMaterial)
-        .cornerRadius(40)
     }
 }
 

@@ -1,5 +1,5 @@
-import SwiftUI
 import RoomPlan
+import SwiftUI
 
 /// Home screen with scan options
 struct HomeView: View {
@@ -18,7 +18,7 @@ struct HomeView: View {
 
             // Title
             VStack(spacing: 8) {
-                Text("Room Scanner")
+                Text("Fixzy Room Scanner")
                     .font(.largeTitle.bold())
                 Text("Scan rooms with LiDAR to get accurate dimensions")
                     .font(.subheadline)
@@ -67,9 +67,11 @@ struct HomeView: View {
             .padding(.bottom, 20)
         }
         .alert("Device Not Supported", isPresented: $showDeviceAlert) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
-            Text("Room scanning requires a device with LiDAR sensor (iPhone 12 Pro or later, iPad Pro with LiDAR).")
+            Text(
+                "Room scanning requires a device with LiDAR sensor (iPhone 12 Pro or later, iPad Pro with LiDAR)."
+            )
         }
     }
 }

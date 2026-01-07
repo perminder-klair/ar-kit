@@ -3,6 +3,7 @@ import UIKit
 import Combine
 import simd
 import ARKit
+import CoreMotion
 
 /// Captured frame data from room scanning
 struct CapturedFrame: Identifiable {
@@ -10,6 +11,7 @@ struct CapturedFrame: Identifiable {
     let imageData: Data
     let timestamp: Date
     let cameraTransform: simd_float4x4
+    let surfaceType: SurfaceType
 
     // Depth data for size calculation
     let depthData: Data?
@@ -24,6 +26,7 @@ struct CapturedFrame: Identifiable {
         imageData: Data,
         timestamp: Date = Date(),
         cameraTransform: simd_float4x4 = simd_float4x4(1),
+        surfaceType: SurfaceType = .wall,
         depthData: Data? = nil,
         depthWidth: Int = 0,
         depthHeight: Int = 0,
@@ -35,6 +38,7 @@ struct CapturedFrame: Identifiable {
         self.imageData = imageData
         self.timestamp = timestamp
         self.cameraTransform = cameraTransform
+        self.surfaceType = surfaceType
         self.depthData = depthData
         self.depthWidth = depthWidth
         self.depthHeight = depthHeight
@@ -58,12 +62,17 @@ final class ARFrameCaptureService: ObservableObject {
     @Published private(set) var capturedFrames: [CapturedFrame] = []
     @Published private(set) var isCapturing: Bool = false
     @Published private(set) var frameCount: Int = 0
+    @Published private(set) var currentSurfaceType: SurfaceType = .wall
 
     // MARK: - Configuration
 
     private let maxFrames = 15
     private let imageCompression: CGFloat = 0.7
     private let maxImageDimension: CGFloat = 1920
+
+    // MARK: - Motion Detection
+
+    private let motionManager = CMMotionManager()
 
     // MARK: - Initialization
 
@@ -74,41 +83,15 @@ final class ARFrameCaptureService: ObservableObject {
     /// Start capturing mode
     func startCapturing() {
         isCapturing = true
-        print("ARFrameCaptureService: Started capturing")
+        startMotionUpdates()
+        print("ARFrameCaptureService: Started capturing with motion detection")
     }
 
     /// Stop capturing mode
     func stopCapturing() {
         isCapturing = false
+        stopMotionUpdates()
         print("ARFrameCaptureService: Stopped capturing, total frames: \(frameCount)")
-    }
-
-    /// Add a screenshot captured from RoomCaptureView
-    func addScreenshot(_ image: UIImage) {
-        guard isCapturing, capturedFrames.count < maxFrames else {
-            return
-        }
-
-        // Resize if needed
-        let resized = resizeIfNeeded(image)
-
-        // Compress to JPEG
-        guard let data = resized.jpegData(compressionQuality: imageCompression) else {
-            print("ARFrameCaptureService: Failed to compress screenshot")
-            return
-        }
-
-        let frame = CapturedFrame(
-            imageData: data,
-            cameraTransform: simd_float4x4(1),  // Identity - no transform for screenshots
-            imageWidth: Int(resized.size.width),
-            imageHeight: Int(resized.size.height)
-        )
-
-        capturedFrames.append(frame)
-        frameCount = capturedFrames.count
-
-        print("ARFrameCaptureService: Captured screenshot \(frameCount)/\(maxFrames)")
     }
 
     /// Capture frame from ARSession with full depth data for damage size calculation
@@ -150,9 +133,14 @@ final class ARFrameCaptureService: ObservableObject {
         // Get camera intrinsics for 3D projection
         let intrinsics = arFrame.camera.intrinsics
 
+        // Detect surface type from camera orientation
+        let surfaceType = detectSurfaceType(from: arFrame.camera.transform)
+        currentSurfaceType = surfaceType
+
         let frame = CapturedFrame(
             imageData: imageData,
             cameraTransform: arFrame.camera.transform,
+            surfaceType: surfaceType,
             depthData: depthData,
             depthWidth: depthWidth,
             depthHeight: depthHeight,
@@ -165,7 +153,7 @@ final class ARFrameCaptureService: ObservableObject {
         frameCount = capturedFrames.count
 
         let hasDepth = depthData != nil ? "with depth" : "no depth"
-        print("ARFrameCaptureService: Captured ARFrame \(frameCount)/\(maxFrames) (\(hasDepth))")
+        print("ARFrameCaptureService: Captured ARFrame \(frameCount)/\(maxFrames) (\(hasDepth), surface: \(surfaceType.rawValue))")
     }
 
     /// Convert depth map CVPixelBuffer to Data for storage
@@ -203,9 +191,88 @@ final class ARFrameCaptureService: ObservableObject {
         return capturedFrames.map { frame in
             CapturedImageData(
                 data: frame.imageData,
-                surfaceType: .wall,  // Default to wall - most common surface
+                surfaceType: frame.surfaceType,
                 surfaceId: nil
             )
+        }
+    }
+
+    // MARK: - Motion-Based Surface Detection
+
+    private func startMotionUpdates() {
+        guard motionManager.isDeviceMotionAvailable else {
+            print("ARFrameCaptureService: Device motion not available")
+            return
+        }
+
+        motionManager.deviceMotionUpdateInterval = 0.1  // 10Hz updates
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+            guard let self = self, let motion = motion else { return }
+            self.updateSurfaceType(from: motion)
+        }
+        print("ARFrameCaptureService: Started motion updates")
+    }
+
+    private func stopMotionUpdates() {
+        motionManager.stopDeviceMotionUpdates()
+    }
+
+    private func updateSurfaceType(from motion: CMDeviceMotion) {
+        // Pitch: rotation around the X-axis (tilting forward/back)
+        // Positive pitch = device tilted up (looking at ceiling)
+        // Negative pitch = device tilted down (looking at floor)
+        let pitch = motion.attitude.pitch
+        let threshold = 0.52  // ~30 degrees in radians
+
+        let newType: SurfaceType
+        if pitch > threshold {
+            newType = .ceiling
+        } else if pitch < -threshold {
+            newType = .floor
+        } else {
+            newType = .wall
+        }
+
+        // Only update if changed to avoid unnecessary UI updates
+        if newType != currentSurfaceType {
+            currentSurfaceType = newType
+        }
+    }
+
+    // MARK: - Transform-Based Surface Detection (for ARFrames)
+
+    /// Determines surface type based on camera orientation
+    /// - Parameter transform: The camera transform matrix from ARKit
+    /// - Returns: The detected surface type (wall, floor, or ceiling)
+    private func detectSurfaceType(from transform: simd_float4x4) -> SurfaceType {
+        // Handle identity transform (screenshots) - default to wall
+        if transform == simd_float4x4(1) {
+            return .wall
+        }
+
+        // Extract camera forward direction in world space
+        // Camera looks down its -Z axis, so we negate the third column
+        let forward = -simd_float3(
+            transform.columns.2.x,
+            transform.columns.2.y,
+            transform.columns.2.z
+        )
+
+        // Normalize for safety (should already be normalized from ARKit)
+        let normalizedForward = simd_normalize(forward)
+
+        // Threshold: ~30 degrees from vertical = sin(30) ≈ 0.5
+        let verticalThreshold: Float = 0.5
+
+        if normalizedForward.y < -verticalThreshold {
+            // Camera looking UP (negative Y means pointing toward ceiling)
+            return .ceiling
+        } else if normalizedForward.y > verticalThreshold {
+            // Camera looking DOWN (positive Y means pointing toward floor)
+            return .floor
+        } else {
+            // Camera roughly horizontal - pointing at wall
+            return .wall
         }
     }
 

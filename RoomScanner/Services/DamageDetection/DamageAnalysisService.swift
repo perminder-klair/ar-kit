@@ -206,7 +206,7 @@ final class DamageAnalysisService: ObservableObject {
         let images = frames.map { frame in
             CapturedImageData(
                 data: frame.imageData,
-                surfaceType: .wall,  // Default to wall
+                surfaceType: frame.surfaceType,
                 surfaceId: nil
             )
         }

@@ -5,7 +5,6 @@ import AVFoundation
 // MARK: - RoomCaptureViewController
 
 /// Room capture controller using Apple's RoomCaptureView for AR visualization
-/// Uses parallel ARSession to capture frames with LiDAR depth data for damage size measurement
 final class RoomCaptureViewController: UIViewController {
 
     // MARK: - Properties
@@ -13,15 +12,6 @@ final class RoomCaptureViewController: UIViewController {
     private var roomCaptureView: RoomCaptureView!
     private let sessionConfig: RoomCaptureSession.Configuration
     private var isSessionRunning = false
-
-    // MARK: - Frame Capture (Screenshots during scan)
-
-    weak var frameCaptureService: ARFrameCaptureService?
-
-    // MARK: - Screenshot Capture (Fallback for non-LiDAR devices)
-
-    private var screenshotTimer: Timer?
-    private let screenshotInterval: TimeInterval = 2.0
 
     weak var delegate: RoomCaptureContainerDelegate? {
         didSet {
@@ -32,9 +22,8 @@ final class RoomCaptureViewController: UIViewController {
         }
     }
 
-    init(configuration: RoomCaptureSession.Configuration, frameCaptureService: ARFrameCaptureService?) {
+    init(configuration: RoomCaptureSession.Configuration) {
         self.sessionConfig = configuration
-        self.frameCaptureService = frameCaptureService
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -74,56 +63,15 @@ final class RoomCaptureViewController: UIViewController {
     func startSession() {
         guard !isSessionRunning else { return }
         isSessionRunning = true
-
-        // Start room capture
         roomCaptureView.captureSession.run(configuration: sessionConfig)
-
-        // Start screenshot capture for damage analysis
-        startScreenshotCapture()
-
-        print("RoomCaptureViewController: Session started with screenshot capture")
+        print("RoomCaptureViewController: Session started")
     }
 
     func stopSession() {
         guard isSessionRunning else { return }
         isSessionRunning = false
-
-        // Stop screenshot capture
-        stopScreenshotCapture()
-
-        // Stop room capture
         roomCaptureView.captureSession.stop()
-
-        print("RoomCaptureViewController: Session stopped, captured \(frameCaptureService?.frameCount ?? 0) screenshots")
-    }
-
-    // MARK: - Screenshot Capture
-
-    private func startScreenshotCapture() {
-        frameCaptureService?.startCapturing()
-
-        screenshotTimer = Timer.scheduledTimer(withTimeInterval: screenshotInterval, repeats: true) { [weak self] _ in
-            self?.captureScreenshot()
-        }
-    }
-
-    private func stopScreenshotCapture() {
-        screenshotTimer?.invalidate()
-        screenshotTimer = nil
-        frameCaptureService?.stopCapturing()
-    }
-
-    private func captureScreenshot() {
-        guard isSessionRunning else { return }
-
-        // Capture the RoomCaptureView content
-        let renderer = UIGraphicsImageRenderer(bounds: roomCaptureView.bounds)
-        let image = renderer.image { _ in
-            roomCaptureView.drawHierarchy(in: roomCaptureView.bounds, afterScreenUpdates: false)
-        }
-
-        // Send to frame capture service
-        frameCaptureService?.addScreenshot(image)
+        print("RoomCaptureViewController: Session stopped")
     }
 }
 
@@ -132,17 +80,12 @@ final class RoomCaptureViewController: UIViewController {
 struct RoomCaptureViewControllerRepresentable: UIViewControllerRepresentable {
     let configuration: RoomCaptureSession.Configuration
     let delegate: RoomCaptureContainerDelegate
-    let frameCaptureService: ARFrameCaptureService?
     var onViewControllerCreated: ((RoomCaptureViewController) -> Void)?
 
     func makeUIViewController(context: Context) -> RoomCaptureViewController {
-        let viewController = RoomCaptureViewController(
-            configuration: configuration,
-            frameCaptureService: frameCaptureService
-        )
+        let viewController = RoomCaptureViewController(configuration: configuration)
         viewController.delegate = delegate
 
-        // Provide reference back to SwiftUI
         DispatchQueue.main.async {
             onViewControllerCreated?(viewController)
         }
@@ -231,7 +174,6 @@ struct RoomScanView: View {
             RoomCaptureViewControllerRepresentable(
                 configuration: appState.roomCaptureService.createConfiguration(),
                 delegate: delegate,
-                frameCaptureService: appState.frameCaptureService,
                 onViewControllerCreated: { vc in
                     viewController = vc
                 }
@@ -324,8 +266,6 @@ struct RoomScanView: View {
         }
         .onAppear {
             delegate.appState = appState
-            // Clear any previous frames for a fresh scan
-            appState.frameCaptureService.clearFrames()
             checkCameraPermission()
         }
     }
@@ -357,7 +297,6 @@ struct RoomScanView: View {
         viewController?.stopSession()
     }
 }
-
 
 #Preview {
     RoomScanView()

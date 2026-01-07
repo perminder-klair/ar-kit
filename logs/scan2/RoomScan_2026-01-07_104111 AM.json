@@ -1,0 +1,67 @@
+{
+  "damageAnalysis" : {
+    "analysisDate" : "2026-01-07T10:40:30Z",
+    "criticalDamages" : 0,
+    "damages" : [
+      {
+        "areaM2" : 0.0012772119,
+        "confidence" : 0.98,
+        "description" : "Small indentation or hole in the drywall surface, likely caused by a minor impact.",
+        "distanceM" : 0.78808594,
+        "heightM" : 0.04094314,
+        "recommendation" : "Patch the area with a small amount of spackle or drywall joint compound, sand until flush with the wall once dry, and then repaint with matching paint.",
+        "severity" : "low",
+        "surfaceType" : "wall",
+        "type" : "hole",
+        "widthM" : 0.031194773
+      }
+    ],
+    "highPriorityDamages" : 0,
+    "overallCondition" : "good",
+    "totalDamagesFound" : 1
+  },
+  "exportDate" : "2026-01-07T10:41:11Z",
+  "roomDimensions" : {
+    "ceilingHeightM" : 2.34,
+    "floorAreaM2" : 3.5527137e-15,
+    "volumeM3" : 8.31335e-15,
+    "wallAreaM2" : 10.068733
+  },
+  "surfaces" : {
+    "doors" : [
+      {
+        "areaM2" : 1.6875786,
+        "heightM" : 2.0885057,
+        "id" : "7A618704-4DEE-4494-A958-71A81147E01D",
+        "type" : "door",
+        "widthM" : 0.80803156
+      }
+    ],
+    "walls" : [
+      {
+        "areaM2" : 4.3954096,
+        "heightM" : 2.34,
+        "id" : "6DEB4E37-BD5A-486B-AE72-28BF633C352A",
+        "isCurved" : false,
+        "widthM" : 1.8783803
+      },
+      {
+        "areaM2" : 3.2374027,
+        "heightM" : 2.34,
+        "id" : "C4E0DCF1-A041-44FA-A98E-C67E70D875A3",
+        "isCurved" : false,
+        "widthM" : 1.3835055
+      },
+      {
+        "areaM2" : 2.4359205,
+        "heightM" : 2.34,
+        "id" : "D8BE7443-BD60-4370-843B-D3FFE816DBEF",
+        "isCurved" : false,
+        "widthM" : 1.0409917
+      }
+    ],
+    "windows" : [
+
+    ]
+  }
+}

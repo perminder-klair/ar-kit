@@ -207,20 +207,25 @@ final class DamagePositionCalculator {
         )
     }
 
-    /// Find the wall that the camera was most likely facing
-    /// Uses dot product between camera forward direction and wall normals
+    /// Find the wall that the camera ray actually intersects
+    /// Uses ray-plane intersection WITH bounds checking
     private func findBestMatchingWall(
         cameraTransform: simd_float4x4,
         walls: [CapturedRoom.Surface]
     ) -> CapturedRoom.Surface? {
         guard !walls.isEmpty else { return nil }
 
-        // Handle identity transform
+        // Handle identity transform - fallback to first wall
         if cameraTransform == simd_float4x4(1) {
             return walls.first
         }
 
-        // Camera forward direction (camera looks down -Z axis)
+        // Camera position and forward direction
+        let cameraPos = simd_float3(
+            cameraTransform.columns.3.x,
+            cameraTransform.columns.3.y,
+            cameraTransform.columns.3.z
+        )
         let cameraForward = -simd_normalize(simd_float3(
             cameraTransform.columns.2.x,
             cameraTransform.columns.2.y,
@@ -228,40 +233,69 @@ final class DamagePositionCalculator {
         ))
 
         var bestWall: CapturedRoom.Surface?
-        var bestScore: Float = -Float.infinity
+        var bestDistance: Float = Float.infinity
 
         for wall in walls {
-            // Wall normal (Z axis of wall transform)
+            // Wall center position
+            let wallPos = simd_float3(
+                wall.transform.columns.3.x,
+                wall.transform.columns.3.y,
+                wall.transform.columns.3.z
+            )
+
+            // Wall coordinate axes
+            let wallXAxis = simd_normalize(simd_float3(
+                wall.transform.columns.0.x,
+                wall.transform.columns.0.y,
+                wall.transform.columns.0.z
+            ))
+            let wallYAxis = simd_normalize(simd_float3(
+                wall.transform.columns.1.x,
+                wall.transform.columns.1.y,
+                wall.transform.columns.1.z
+            ))
             let wallNormal = simd_normalize(simd_float3(
                 wall.transform.columns.2.x,
                 wall.transform.columns.2.y,
                 wall.transform.columns.2.z
             ))
 
-            // We want walls where camera forward opposes wall normal
-            // (camera facing the front of the wall = dot product is negative)
-            let dot = simd_dot(cameraForward, wallNormal)
+            // Ray-plane intersection
+            let denom = simd_dot(cameraForward, wallNormal)
+            guard abs(denom) > 0.001 else { continue }
 
-            // Score: more negative = camera facing wall more directly
-            // Also consider distance to wall (closer walls are better matches)
-            let cameraPos = simd_float3(
-                cameraTransform.columns.3.x,
-                cameraTransform.columns.3.y,
-                cameraTransform.columns.3.z
-            )
-            let wallPos = simd_float3(
-                wall.transform.columns.3.x,
-                wall.transform.columns.3.y,
-                wall.transform.columns.3.z
-            )
-            let distance = simd_length(cameraPos - wallPos)
+            let t = simd_dot(wallPos - cameraPos, wallNormal) / denom
+            guard t > 0.1 && t < 10.0 else { continue }
 
-            // Combined score: facing direction (negative is better) + distance penalty
-            let score = -dot - distance * 0.1  // Slight penalty for far walls
+            // Calculate intersection point in world space
+            let intersectionPoint = cameraPos + cameraForward * t
 
-            if score > bestScore {
-                bestScore = score
+            // Transform to wall's local coordinate space
+            let toIntersection = intersectionPoint - wallPos
+            let localX = simd_dot(toIntersection, wallXAxis)
+            let localY = simd_dot(toIntersection, wallYAxis)
+
+            // Check if intersection is within wall bounds
+            let halfWidth = wall.dimensions.x / 2.0
+            let halfHeight = wall.dimensions.y / 2.0
+
+            guard abs(localX) <= halfWidth && abs(localY) <= halfHeight else {
+                continue  // Intersection outside wall bounds, skip
+            }
+
+            // Select nearest wall that passes bounds check
+            if t < bestDistance {
+                bestDistance = t
                 bestWall = wall
+            }
+        }
+
+        // Fallback to closest wall by position if no bounded intersection found
+        if bestWall == nil {
+            bestWall = walls.min { wall1, wall2 in
+                let pos1 = simd_float3(wall1.transform.columns.3.x, wall1.transform.columns.3.y, wall1.transform.columns.3.z)
+                let pos2 = simd_float3(wall2.transform.columns.3.x, wall2.transform.columns.3.y, wall2.transform.columns.3.z)
+                return simd_length(pos1 - cameraPos) < simd_length(pos2 - cameraPos)
             }
         }
 

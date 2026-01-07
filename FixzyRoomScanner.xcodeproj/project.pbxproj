@@ -31,6 +31,7 @@
 		7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */; };
 		7E6C1D1B2F0C0284000AE92A /* ARFrameCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D1C2F0C0284000AE92A /* ARFrameCaptureService.swift */; };
 		7E6C1D1E2F0C0285000AE92A /* DamageSizeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D1D2F0C0285000AE92A /* DamageSizeCalculator.swift */; };
+		7E6C1D272F0C0288000AE92A /* DamagePositionCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D282F0C0288000AE92A /* DamagePositionCalculator.swift */; };
 		7E6C1D242F0C0286000AE92A /* DepthCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D232F0C0286000AE92A /* DepthCaptureView.swift */; };
 		7E6C1D252F0C0287000AE92A /* RoomModelViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1D262F0C0287000AE92A /* RoomModelViewer.swift */; };
 		7E6C1D302F0C0290000AE92A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E6C1D2F2F0C0290000AE92A /* Assets.xcassets */; };
@@ -62,6 +63,7 @@
 		7E6C1D0A2F0C0283000AE92A /* DamageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageDetailView.swift; sourceTree = "<group>"; };
 		7E6C1D1C2F0C0284000AE92A /* ARFrameCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARFrameCaptureService.swift; sourceTree = "<group>"; };
 		7E6C1D1D2F0C0285000AE92A /* DamageSizeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageSizeCalculator.swift; sourceTree = "<group>"; };
+		7E6C1D282F0C0288000AE92A /* DamagePositionCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamagePositionCalculator.swift; sourceTree = "<group>"; };
 		7E6C1D232F0C0286000AE92A /* DepthCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthCaptureView.swift; sourceTree = "<group>"; };
 		7E6C1D262F0C0287000AE92A /* RoomModelViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomModelViewer.swift; sourceTree = "<group>"; };
 		7E6C1D2F2F0C0290000AE92A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -211,6 +213,7 @@
 				7E6C1D062F0C0283000AE92A /* ImageCaptureHelper.swift */,
 				7E6C1D1C2F0C0284000AE92A /* ARFrameCaptureService.swift */,
 				7E6C1D1D2F0C0285000AE92A /* DamageSizeCalculator.swift */,
+				7E6C1D282F0C0288000AE92A /* DamagePositionCalculator.swift */,
 			);
 			path = DamageDetection;
 			sourceTree = "<group>";
@@ -338,6 +341,7 @@
 				7E6C1D1A2F0C0283000AE92A /* DamageDetailView.swift in Sources */,
 				7E6C1D1B2F0C0284000AE92A /* ARFrameCaptureService.swift in Sources */,
 				7E6C1D1E2F0C0285000AE92A /* DamageSizeCalculator.swift in Sources */,
+				7E6C1D272F0C0288000AE92A /* DamagePositionCalculator.swift in Sources */,
 				7E6C1D242F0C0286000AE92A /* DepthCaptureView.swift in Sources */,
 				7E6C1D252F0C0287000AE92A /* RoomModelViewer.swift in Sources */,
 			);

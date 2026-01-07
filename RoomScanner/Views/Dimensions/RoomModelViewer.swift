@@ -1,14 +1,30 @@
 import SwiftUI
 import RoomPlan
 import SceneKit
+import UIKit
 
 /// 3D viewer for CapturedRoom using inline SceneKit
 struct RoomModelViewer: View {
     let capturedRoom: CapturedRoom
+    let damages: [DetectedDamage]?
+    let capturedFrames: [CapturedFrame]?
 
     @State private var modelURL: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var damagePositions: [DamageWorldPosition] = []
+
+    private let positionCalculator = DamagePositionCalculator()
+
+    init(
+        capturedRoom: CapturedRoom,
+        damages: [DetectedDamage]? = nil,
+        capturedFrames: [CapturedFrame]? = nil
+    ) {
+        self.capturedRoom = capturedRoom
+        self.damages = damages
+        self.capturedFrames = capturedFrames
+    }
 
     var body: some View {
         ZStack {
@@ -20,7 +36,11 @@ struct RoomModelViewer: View {
                         .foregroundStyle(.secondary)
                 }
             } else if let url = modelURL {
-                SceneKitView(modelURL: url)
+                SceneKitView(
+                    modelURL: url,
+                    damagePositions: damagePositions,
+                    damages: damages ?? []
+                )
             } else if let error = errorMessage {
                 VStack(spacing: 8) {
                     Image(systemName: "cube.transparent")
@@ -37,6 +57,7 @@ struct RoomModelViewer: View {
         }
         .task {
             await loadModel()
+            calculateDamagePositions()
         }
     }
 
@@ -56,11 +77,26 @@ struct RoomModelViewer: View {
             }
         }
     }
+
+    private func calculateDamagePositions() {
+        guard let damages = damages,
+              let frames = capturedFrames,
+              !damages.isEmpty,
+              !frames.isEmpty else {
+            return
+        }
+        damagePositions = positionCalculator.calculateAllPositions(
+            damages: damages,
+            frames: frames
+        )
+    }
 }
 
-/// SceneKit wrapper to display USDZ model inline
+/// SceneKit wrapper to display USDZ model inline with damage markers
 struct SceneKitView: UIViewRepresentable {
     let modelURL: URL
+    let damagePositions: [DamageWorldPosition]
+    let damages: [DetectedDamage]
 
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView()
@@ -91,10 +127,66 @@ struct SceneKitView: UIViewRepresentable {
             )
             cameraNode.look(at: center)
             scene.rootNode.addChildNode(cameraNode)
+
+            // Add damage markers
+            addDamageMarkers(to: scene)
         }
 
         return scnView
     }
 
     func updateUIView(_ uiView: SCNView, context: Context) {}
+
+    // MARK: - Damage Markers
+
+    private func addDamageMarkers(to scene: SCNScene) {
+        guard !damagePositions.isEmpty else { return }
+
+        let markersNode = SCNNode()
+        markersNode.name = "DamageMarkers"
+
+        for position in damagePositions {
+            let damage = damages.first { $0.id == position.damageId }
+            let markerNode = createMarkerNode(
+                at: position.position,
+                severity: damage?.severity ?? .moderate
+            )
+            markersNode.addChildNode(markerNode)
+        }
+
+        scene.rootNode.addChildNode(markersNode)
+    }
+
+    private func createMarkerNode(at position: simd_float3, severity: DamageSeverity) -> SCNNode {
+        // Create sphere marker
+        let sphere = SCNSphere(radius: 0.03)
+
+        let material = SCNMaterial()
+        material.diffuse.contents = colorForSeverity(severity)
+        material.emission.contents = colorForSeverity(severity).withAlphaComponent(0.3)
+        sphere.materials = [material]
+
+        let markerNode = SCNNode(geometry: sphere)
+        markerNode.position = SCNVector3(position.x, position.y, position.z)
+
+        // Add billboard constraint so marker always faces camera
+        let constraint = SCNBillboardConstraint()
+        constraint.freeAxes = .all
+        markerNode.constraints = [constraint]
+
+        return markerNode
+    }
+
+    private func colorForSeverity(_ severity: DamageSeverity) -> UIColor {
+        switch severity {
+        case .low:
+            return .systemGreen
+        case .moderate:
+            return .systemYellow
+        case .high:
+            return .systemOrange
+        case .critical:
+            return .systemRed
+        }
+    }
 }

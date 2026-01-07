@@ -32,6 +32,13 @@ struct ReportView: View {
                         DamageReportSection(damageResult: damageResult)
                     }
 
+                    // 3D Room Model with Damage Markers
+                    RoomModelSection(
+                        capturedRoom: capturedRoom,
+                        damages: appState.damageAnalysisResult?.detectedDamages,
+                        capturedFrames: appState.frameCaptureService.capturedFrames
+                    )
+
                     // Quick Stats
                     if let dims = dimensions {
                         QuickStatsSection(dimensions: dims, unit: selectedUnit)
@@ -324,6 +331,36 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) { }
+}
+
+// MARK: - 3D Room Model Section
+
+struct RoomModelSection: View {
+    let capturedRoom: CapturedRoom
+    let damages: [DetectedDamage]?
+    let capturedFrames: [CapturedFrame]?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("3D Room Model")
+                .font(.headline)
+
+            RoomModelViewer(
+                capturedRoom: capturedRoom,
+                damages: damages,
+                capturedFrames: capturedFrames
+            )
+            .frame(height: 250)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+
+            if let damages, !damages.isEmpty {
+                Text("\(damages.count) damage locations marked")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
 }
 
 #Preview {

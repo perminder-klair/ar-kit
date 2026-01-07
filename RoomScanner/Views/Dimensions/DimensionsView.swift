@@ -19,12 +19,16 @@ struct DimensionsView: View {
                     SummaryCard(dimensions: dims, unit: selectedUnit)
                 }
 
-                // Room 3D Model
-                RoomModelViewer(capturedRoom: capturedRoom)
-                    .frame(height: 300)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
+                // Room 3D Model with damage markers
+                RoomModelViewer(
+                    capturedRoom: capturedRoom,
+                    damages: appState.damageAnalysisResult?.detectedDamages,
+                    capturedFrames: appState.frameCaptureService.capturedFrames
+                )
+                .frame(height: 300)
+                .background(Color(.systemGray6))
+                .cornerRadius(16)
+                .padding(.horizontal)
 
                 // Detailed Measurements
                 if let dims = dimensions {

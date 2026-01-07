@@ -1,0 +1,67 @@
+{
+  "damageAnalysis" : {
+    "analysisDate" : "2026-01-07T09:57:48Z",
+    "criticalDamages" : 0,
+    "damages" : [
+      {
+        "areaM2" : 0.0014855938,
+        "confidence" : 0.95,
+        "description" : "A small hole or indentation in the wall with chipped edges.",
+        "distanceM" : 0.55566406,
+        "heightM" : 0.049922734,
+        "recommendation" : "Patch with spackle or joint compound, sand smooth, and repaint.",
+        "severity" : "low",
+        "surfaceType" : "wall",
+        "type" : "hole",
+        "widthM" : 0.029757863
+      }
+    ],
+    "highPriorityDamages" : 0,
+    "overallCondition" : "good",
+    "totalDamagesFound" : 1
+  },
+  "exportDate" : "2026-01-07T09:58:36Z",
+  "roomDimensions" : {
+    "ceilingHeightM" : 2.34,
+    "floorAreaM2" : 0,
+    "volumeM3" : 0,
+    "wallAreaM2" : 9.515185
+  },
+  "surfaces" : {
+    "doors" : [
+      {
+        "areaM2" : 1.699688,
+        "heightM" : 2.044876,
+        "id" : "C57713FB-A088-45CA-B3BE-0992FC2012E4",
+        "type" : "door",
+        "widthM" : 0.8311936
+      }
+    ],
+    "walls" : [
+      {
+        "areaM2" : 3.6497257,
+        "heightM" : 2.34,
+        "id" : "8FA78156-5A62-4646-BC60-0D5228CE9E42",
+        "isCurved" : false,
+        "widthM" : 1.5597119
+      },
+      {
+        "areaM2" : 3.4295387,
+        "heightM" : 2.34,
+        "id" : "A68D6897-E1FB-4A3C-B6A1-36684D4B4F12",
+        "isCurved" : false,
+        "widthM" : 1.4656149
+      },
+      {
+        "areaM2" : 2.4359205,
+        "heightM" : 2.34,
+        "id" : "DC861DE3-366C-4C6A-B3EB-0536D48D32C4",
+        "isCurved" : false,
+        "widthM" : 1.0409917
+      }
+    ],
+    "windows" : [
+
+    ]
+  }
+}

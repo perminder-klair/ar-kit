@@ -79,15 +79,13 @@ struct RoomModelViewer: View {
     }
 
     private func calculateDamagePositions() {
-        guard let damages = damages,
-              let frames = capturedFrames,
-              !damages.isEmpty,
-              !frames.isEmpty else {
+        guard let damages = damages, !damages.isEmpty else {
             return
         }
-        damagePositions = positionCalculator.calculateAllPositions(
+        // Use room-based positioning (same coordinate system as USDZ export)
+        damagePositions = positionCalculator.calculatePositionsFromRoom(
             damages: damages,
-            frames: frames
+            room: capturedRoom
         )
     }
 }

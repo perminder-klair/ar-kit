@@ -1,5 +1,6 @@
 import Foundation
 import simd
+import RoomPlan
 
 /// 3D world position for a detected damage
 struct DamageWorldPosition {
@@ -17,9 +18,31 @@ final class DamagePositionCalculator {
     private let maxValidDepth: Float = 5.0
     private let depthSampleGrid = 3
 
+    // Track which wall index to use for distributing damages
+    private var wallDamageIndex = 0
+
     // MARK: - Public Methods
 
-    /// Calculate world positions for all damages with matching frames
+    /// Calculate positions from CapturedRoom surfaces (RECOMMENDED)
+    /// Uses RoomPlan's coordinate system which matches the USDZ export
+    func calculatePositionsFromRoom(
+        damages: [DetectedDamage],
+        room: CapturedRoom
+    ) -> [DamageWorldPosition] {
+        var positions: [DamageWorldPosition] = []
+        wallDamageIndex = 0  // Reset for each calculation
+
+        for damage in damages {
+            if let position = findSurfacePosition(for: damage, in: room) {
+                positions.append(position)
+            }
+        }
+
+        return positions
+    }
+
+    /// Calculate world positions using depth frames (DEPRECATED - coordinate system mismatch)
+    /// Positions calculated here are in ARSession's coordinate system, not RoomPlan's
     func calculateAllPositions(
         damages: [DetectedDamage],
         frames: [CapturedFrame]
@@ -36,6 +59,65 @@ final class DamagePositionCalculator {
         }
 
         return positions
+    }
+
+    // MARK: - Room-Based Positioning
+
+    private func findSurfacePosition(
+        for damage: DetectedDamage,
+        in room: CapturedRoom
+    ) -> DamageWorldPosition? {
+        // Find matching surface by type
+        var transform: simd_float4x4?
+
+        switch damage.surfaceType {
+        case .wall:
+            // Distribute wall damages across different walls
+            if !room.walls.isEmpty {
+                let wallIndex = wallDamageIndex % room.walls.count
+                transform = room.walls[wallIndex].transform
+                wallDamageIndex += 1
+            }
+        case .floor:
+            transform = room.floors.first?.transform
+        case .ceiling:
+            // Use floor position with ceiling height offset
+            if let floorTransform = room.floors.first?.transform {
+                var ceilingTransform = floorTransform
+                // Offset Y by approximate ceiling height (2.4m typical)
+                ceilingTransform.columns.3.y += 2.4
+                transform = ceilingTransform
+            }
+        case .door:
+            transform = room.doors.first?.transform
+        case .window:
+            transform = room.windows.first?.transform
+        case .unknown:
+            transform = room.walls.first?.transform
+        }
+
+        guard let surfaceTransform = transform else { return nil }
+
+        // Get surface center from transform
+        let position = simd_float3(
+            surfaceTransform.columns.3.x,
+            surfaceTransform.columns.3.y,
+            surfaceTransform.columns.3.z
+        )
+
+        // Get surface normal (Z axis of transform) and offset marker outward
+        let normal = simd_normalize(simd_float3(
+            surfaceTransform.columns.2.x,
+            surfaceTransform.columns.2.y,
+            surfaceTransform.columns.2.z
+        ))
+        let offsetPosition = position + normal * 0.05  // 5cm offset from surface
+
+        return DamageWorldPosition(
+            position: offsetPosition,
+            damageId: damage.id,
+            confidence: 0.7  // Lower confidence for surface-based placement
+        )
     }
 
     /// Calculate world position for a single damage detection

@@ -24,7 +24,8 @@ struct ReportView: View {
                     ExportOptionsSection(
                         onExportUSDZ: exportUSDZ,
                         onExportJSON: exportJSON,
-                        onExportPDF: exportPDF
+                        onExportPDF: exportPDF,
+                        onExportThreeJS: exportThreeJS
                     )
 
                     // Damage Analysis Summary (if available)
@@ -141,6 +142,27 @@ struct ReportView: View {
             }
         }
     }
+
+    private func exportThreeJS() {
+        Task {
+            isExporting = true
+            defer { isExporting = false }
+
+            do {
+                guard let dims = dimensions else { return }
+                let url = try exporter.exportThreeJS(
+                    capturedRoom: capturedRoom,
+                    dimensions: dims,
+                    damageAnalysis: appState.damageAnalysisResult,
+                    capturedFrames: appState.frameCaptureService.capturedFrames
+                )
+                exportedFileURL = url
+                showShareSheet = true
+            } catch {
+                exportError = error.localizedDescription
+            }
+        }
+    }
 }
 
 // MARK: - Damage Report Section
@@ -205,6 +227,7 @@ struct ExportOptionsSection: View {
     let onExportUSDZ: () -> Void
     let onExportJSON: () -> Void
     let onExportPDF: () -> Void
+    let onExportThreeJS: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -218,6 +241,14 @@ struct ExportOptionsSection: View {
                     description: "View in AR Quick Look",
                     color: .purple,
                     action: onExportUSDZ
+                )
+
+                ExportButton(
+                    icon: "globe",
+                    title: "Web 3D (JSON)",
+                    description: "Three.js compatible geometry",
+                    color: .blue,
+                    action: onExportThreeJS
                 )
 
                 ExportButton(

@@ -2,6 +2,7 @@ import Foundation
 import RoomPlan
 import PDFKit
 import UIKit
+import simd
 
 /// Service for exporting room data in various formats
 final class RoomExporter {
@@ -23,6 +24,65 @@ final class RoomExporter {
                 return "Failed to encode data"
             }
         }
+    }
+
+    // MARK: - Three.js Export Types
+
+    struct ThreeJSExportData: Codable {
+        let version: String
+        let unit: String
+        let exportDate: Date
+        let room: ThreeJSRoomInfo
+        let surfaces: [ThreeJSSurface]
+        let damages: [ThreeJSDamage]
+    }
+
+    struct ThreeJSRoomInfo: Codable {
+        let boundingBox: ThreeJSBoundingBox
+        let floorArea: Float
+        let wallArea: Float
+        let ceilingHeight: Float
+        let volume: Float
+    }
+
+    struct ThreeJSBoundingBox: Codable {
+        let min: [Float]
+        let max: [Float]
+    }
+
+    struct ThreeJSSurface: Codable {
+        let id: String
+        let type: String
+        let vertices: [[Float]]
+        let transform: [Float]
+        let dimensions: ThreeJSDimensions
+        let parentId: String?
+        let confidence: String
+    }
+
+    struct ThreeJSDimensions: Codable {
+        let width: Float
+        let height: Float
+        let depth: Float
+    }
+
+    struct ThreeJSDamage: Codable {
+        let id: String
+        let type: String
+        let severity: String
+        let position: [Float]
+        let surfaceId: String?
+        let surfaceType: String
+        let measurements: ThreeJSMeasurements?
+        let confidence: Float
+        let description: String
+        let recommendation: String?
+    }
+
+    struct ThreeJSMeasurements: Codable {
+        let width: Float
+        let height: Float
+        let area: Float
     }
 
     struct RoomExportData: Codable {
@@ -195,6 +255,217 @@ final class RoomExporter {
             return url
         } catch {
             throw ExportError.fileCreationFailed
+        }
+    }
+
+    // MARK: - Three.js JSON Export
+
+    /// Export room geometry and damages as Three.js compatible JSON
+    func exportThreeJS(
+        capturedRoom: CapturedRoom,
+        dimensions: CapturedRoomProcessor.RoomDimensions,
+        damageAnalysis: DamageAnalysisResult?,
+        capturedFrames: [CapturedFrame] = []
+    ) throws -> URL {
+        let exportData = createThreeJSExportData(
+            capturedRoom: capturedRoom,
+            dimensions: dimensions,
+            damageAnalysis: damageAnalysis,
+            capturedFrames: capturedFrames
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+
+        guard let jsonData = try? encoder.encode(exportData) else {
+            throw ExportError.encodingFailed
+        }
+
+        let filename = generateFilename(extension: "json", suffix: "_threejs")
+        let url = exportDirectory.appendingPathComponent(filename)
+
+        do {
+            try jsonData.write(to: url)
+            return url
+        } catch {
+            throw ExportError.fileCreationFailed
+        }
+    }
+
+    private func createThreeJSExportData(
+        capturedRoom: CapturedRoom,
+        dimensions: CapturedRoomProcessor.RoomDimensions,
+        damageAnalysis: DamageAnalysisResult?,
+        capturedFrames: [CapturedFrame]
+    ) -> ThreeJSExportData {
+        // Calculate bounding box from all surfaces
+        var allCorners: [simd_float3] = []
+        allCorners.append(contentsOf: dimensions.floor.polygonCorners)
+        for wall in dimensions.walls {
+            allCorners.append(contentsOf: wall.polygonCorners)
+        }
+
+        let boundingBox: ThreeJSBoundingBox
+        if let (minPt, maxPt) = CapturedRoomProcessor().calculateBoundingBox(allCorners) {
+            boundingBox = ThreeJSBoundingBox(
+                min: [minPt.x, minPt.y, minPt.z],
+                max: [maxPt.x, maxPt.y, maxPt.z]
+            )
+        } else {
+            boundingBox = ThreeJSBoundingBox(min: [0, 0, 0], max: [0, 0, 0])
+        }
+
+        let roomInfo = ThreeJSRoomInfo(
+            boundingBox: boundingBox,
+            floorArea: dimensions.totalFloorArea,
+            wallArea: dimensions.totalWallArea,
+            ceilingHeight: dimensions.ceilingHeight,
+            volume: dimensions.roomVolume
+        )
+
+        // Extract surfaces with geometry
+        var surfaces: [ThreeJSSurface] = []
+
+        // Floor
+        if !dimensions.floor.polygonCorners.isEmpty {
+            surfaces.append(ThreeJSSurface(
+                id: "floor",
+                type: "floor",
+                vertices: dimensions.floor.polygonCorners.map { [$0.x, $0.y, $0.z] },
+                transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
+                           dimensions.floor.center.x, dimensions.floor.center.y, dimensions.floor.center.z, 1],
+                dimensions: ThreeJSDimensions(
+                    width: dimensions.floor.boundingWidth,
+                    height: 0,
+                    depth: dimensions.floor.boundingLength
+                ),
+                parentId: nil,
+                confidence: "high"
+            ))
+        }
+
+        // Walls
+        for wall in dimensions.walls {
+            let transform = wall.transform
+            let transformArray: [Float] = [
+                transform.columns.0.x, transform.columns.0.y, transform.columns.0.z, transform.columns.0.w,
+                transform.columns.1.x, transform.columns.1.y, transform.columns.1.z, transform.columns.1.w,
+                transform.columns.2.x, transform.columns.2.y, transform.columns.2.z, transform.columns.2.w,
+                transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, transform.columns.3.w
+            ]
+
+            surfaces.append(ThreeJSSurface(
+                id: wall.id.uuidString,
+                type: "wall",
+                vertices: wall.polygonCorners.map { [$0.x, $0.y, $0.z] },
+                transform: transformArray,
+                dimensions: ThreeJSDimensions(width: wall.width, height: wall.height, depth: 0.1),
+                parentId: nil,
+                confidence: confidenceToString(wall.confidence)
+            ))
+        }
+
+        // Doors
+        for (index, door) in capturedRoom.doors.enumerated() {
+            let transform = door.transform
+            let transformArray: [Float] = [
+                transform.columns.0.x, transform.columns.0.y, transform.columns.0.z, transform.columns.0.w,
+                transform.columns.1.x, transform.columns.1.y, transform.columns.1.z, transform.columns.1.w,
+                transform.columns.2.x, transform.columns.2.y, transform.columns.2.z, transform.columns.2.w,
+                transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, transform.columns.3.w
+            ]
+
+            surfaces.append(ThreeJSSurface(
+                id: door.identifier.uuidString,
+                type: "door",
+                vertices: door.polygonCorners.map { [$0.x, $0.y, $0.z] },
+                transform: transformArray,
+                dimensions: ThreeJSDimensions(
+                    width: index < dimensions.doors.count ? dimensions.doors[index].width : door.dimensions.x,
+                    height: index < dimensions.doors.count ? dimensions.doors[index].height : door.dimensions.y,
+                    depth: door.dimensions.z
+                ),
+                parentId: door.parentIdentifier?.uuidString,
+                confidence: confidenceToString(door.confidence)
+            ))
+        }
+
+        // Windows
+        for (index, window) in capturedRoom.windows.enumerated() {
+            let transform = window.transform
+            let transformArray: [Float] = [
+                transform.columns.0.x, transform.columns.0.y, transform.columns.0.z, transform.columns.0.w,
+                transform.columns.1.x, transform.columns.1.y, transform.columns.1.z, transform.columns.1.w,
+                transform.columns.2.x, transform.columns.2.y, transform.columns.2.z, transform.columns.2.w,
+                transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, transform.columns.3.w
+            ]
+
+            surfaces.append(ThreeJSSurface(
+                id: window.identifier.uuidString,
+                type: "window",
+                vertices: window.polygonCorners.map { [$0.x, $0.y, $0.z] },
+                transform: transformArray,
+                dimensions: ThreeJSDimensions(
+                    width: index < dimensions.windows.count ? dimensions.windows[index].width : window.dimensions.x,
+                    height: index < dimensions.windows.count ? dimensions.windows[index].height : window.dimensions.y,
+                    depth: window.dimensions.z
+                ),
+                parentId: window.parentIdentifier?.uuidString,
+                confidence: confidenceToString(window.confidence)
+            ))
+        }
+
+        // Extract damages with 3D positions
+        var damages: [ThreeJSDamage] = []
+        if let analysis = damageAnalysis {
+            let positionCalculator = DamagePositionCalculator()
+            let damagePositions = positionCalculator.calculatePositionsWithCameraTransforms(
+                damages: analysis.detectedDamages,
+                frames: capturedFrames,
+                room: capturedRoom
+            )
+
+            for damage in analysis.detectedDamages {
+                let position = damagePositions.first { $0.damageId == damage.id }
+                let pos = position?.position ?? simd_float3(0, 0, 0)
+
+                var measurements: ThreeJSMeasurements?
+                if let w = damage.realWidth, let h = damage.realHeight, let a = damage.realArea {
+                    measurements = ThreeJSMeasurements(width: w, height: h, area: a)
+                }
+
+                damages.append(ThreeJSDamage(
+                    id: damage.id.uuidString,
+                    type: damage.type.rawValue,
+                    severity: damage.severity.rawValue,
+                    position: [pos.x, pos.y, pos.z],
+                    surfaceId: damage.surfaceId?.uuidString,
+                    surfaceType: damage.surfaceType.rawValue,
+                    measurements: measurements,
+                    confidence: damage.confidence,
+                    description: damage.description,
+                    recommendation: damage.recommendation
+                ))
+            }
+        }
+
+        return ThreeJSExportData(
+            version: "1.0",
+            unit: "meters",
+            exportDate: Date(),
+            room: roomInfo,
+            surfaces: surfaces,
+            damages: damages
+        )
+    }
+
+    private func confidenceToString(_ confidence: CapturedRoom.Confidence) -> String {
+        switch confidence {
+        case .high: return "high"
+        case .medium: return "medium"
+        case .low: return "low"
+        @unknown default: return "unknown"
         }
     }
 

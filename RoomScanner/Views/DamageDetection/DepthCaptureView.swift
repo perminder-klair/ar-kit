@@ -138,18 +138,6 @@ struct DepthCaptureView: View {
 
     private var bottomControls: some View {
         HStack(spacing: 30) {
-            // Skip button
-            Button {
-                appState.startDamageAnalysis()
-            } label: {
-                Text("Skip")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 70, height: 50)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-            }
-
             // Manual capture button
             Button(action: capturePhoto) {
                 ZStack {

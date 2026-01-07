@@ -150,20 +150,14 @@ struct DamageAnalysisView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 40)
                 } else {
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                            GridItem(.flexible()),
-                        ], spacing: 8
-                    ) {
-                        ForEach(Array(autoCapturedPreviews.enumerated()), id: \.offset) {
-                            index, image in
+                    LazyVStack(spacing: 12) {
+                        ForEach(Array(autoCapturedPreviews.enumerated()), id: \.offset) { index, image in
                             Image(uiImage: image)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(height: 100)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                     }
                 }

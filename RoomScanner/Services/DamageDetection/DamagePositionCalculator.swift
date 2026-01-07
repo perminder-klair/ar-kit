@@ -41,6 +41,31 @@ final class DamagePositionCalculator {
         return positions
     }
 
+    /// Calculate positions using camera transforms from captured frames (ENHANCED)
+    /// Uses camera direction to find which wall the user was looking at
+    func calculatePositionsWithCameraTransforms(
+        damages: [DetectedDamage],
+        frames: [CapturedFrame],
+        room: CapturedRoom
+    ) -> [DamageWorldPosition] {
+        var positions: [DamageWorldPosition] = []
+
+        for damage in damages {
+            // Get the frame where this damage was detected
+            let frame: CapturedFrame? = damage.imageIndex < frames.count ? frames[damage.imageIndex] : nil
+
+            if let position = findSurfacePositionWithCamera(
+                for: damage,
+                cameraTransform: frame?.cameraTransform,
+                in: room
+            ) {
+                positions.append(position)
+            }
+        }
+
+        return positions
+    }
+
     /// Calculate world positions using depth frames (DEPRECATED - coordinate system mismatch)
     /// Positions calculated here are in ARSession's coordinate system, not RoomPlan's
     func calculateAllPositions(
@@ -118,6 +143,129 @@ final class DamagePositionCalculator {
             damageId: damage.id,
             confidence: 0.7  // Lower confidence for surface-based placement
         )
+    }
+
+    /// Find surface position using camera transform for better wall selection
+    private func findSurfacePositionWithCamera(
+        for damage: DetectedDamage,
+        cameraTransform: simd_float4x4?,
+        in room: CapturedRoom
+    ) -> DamageWorldPosition? {
+        var transform: simd_float4x4?
+        var confidence: Float = 0.7
+
+        switch damage.surfaceType {
+        case .wall:
+            // Use camera transform to find the best matching wall
+            if let camera = cameraTransform, let bestWall = findBestMatchingWall(
+                cameraTransform: camera,
+                walls: room.walls
+            ) {
+                transform = bestWall.transform
+                confidence = 0.85  // Higher confidence when using camera direction
+            } else if !room.walls.isEmpty {
+                // Fallback to distribution
+                let wallIndex = wallDamageIndex % room.walls.count
+                transform = room.walls[wallIndex].transform
+                wallDamageIndex += 1
+            }
+        case .floor:
+            transform = room.floors.first?.transform
+        case .ceiling:
+            if let floorTransform = room.floors.first?.transform {
+                var ceilingTransform = floorTransform
+                ceilingTransform.columns.3.y += 2.4
+                transform = ceilingTransform
+            }
+        case .door:
+            transform = room.doors.first?.transform
+        case .window:
+            transform = room.windows.first?.transform
+        case .unknown:
+            transform = room.walls.first?.transform
+        }
+
+        guard let surfaceTransform = transform else { return nil }
+
+        let position = simd_float3(
+            surfaceTransform.columns.3.x,
+            surfaceTransform.columns.3.y,
+            surfaceTransform.columns.3.z
+        )
+
+        let normal = simd_normalize(simd_float3(
+            surfaceTransform.columns.2.x,
+            surfaceTransform.columns.2.y,
+            surfaceTransform.columns.2.z
+        ))
+        let offsetPosition = position + normal * 0.05
+
+        return DamageWorldPosition(
+            position: offsetPosition,
+            damageId: damage.id,
+            confidence: confidence
+        )
+    }
+
+    /// Find the wall that the camera was most likely facing
+    /// Uses dot product between camera forward direction and wall normals
+    private func findBestMatchingWall(
+        cameraTransform: simd_float4x4,
+        walls: [CapturedRoom.Surface]
+    ) -> CapturedRoom.Surface? {
+        guard !walls.isEmpty else { return nil }
+
+        // Handle identity transform
+        if cameraTransform == simd_float4x4(1) {
+            return walls.first
+        }
+
+        // Camera forward direction (camera looks down -Z axis)
+        let cameraForward = -simd_normalize(simd_float3(
+            cameraTransform.columns.2.x,
+            cameraTransform.columns.2.y,
+            cameraTransform.columns.2.z
+        ))
+
+        var bestWall: CapturedRoom.Surface?
+        var bestScore: Float = -Float.infinity
+
+        for wall in walls {
+            // Wall normal (Z axis of wall transform)
+            let wallNormal = simd_normalize(simd_float3(
+                wall.transform.columns.2.x,
+                wall.transform.columns.2.y,
+                wall.transform.columns.2.z
+            ))
+
+            // We want walls where camera forward opposes wall normal
+            // (camera facing the front of the wall = dot product is negative)
+            let dot = simd_dot(cameraForward, wallNormal)
+
+            // Score: more negative = camera facing wall more directly
+            // Also consider distance to wall (closer walls are better matches)
+            let cameraPos = simd_float3(
+                cameraTransform.columns.3.x,
+                cameraTransform.columns.3.y,
+                cameraTransform.columns.3.z
+            )
+            let wallPos = simd_float3(
+                wall.transform.columns.3.x,
+                wall.transform.columns.3.y,
+                wall.transform.columns.3.z
+            )
+            let distance = simd_length(cameraPos - wallPos)
+
+            // Combined score: facing direction (negative is better) + distance penalty
+            let score = -dot - distance * 0.1  // Slight penalty for far walls
+
+            if score > bestScore {
+                bestScore = score
+                bestWall = wall
+            }
+        }
+
+        return bestWall
     }
 
     /// Calculate world position for a single damage detection

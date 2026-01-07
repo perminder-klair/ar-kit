@@ -82,11 +82,22 @@ struct RoomModelViewer: View {
         guard let damages = damages, !damages.isEmpty else {
             return
         }
-        // Use room-based positioning (same coordinate system as USDZ export)
-        damagePositions = positionCalculator.calculatePositionsFromRoom(
-            damages: damages,
-            room: capturedRoom
-        )
+
+        // Use enhanced positioning with camera transforms if available
+        if let frames = capturedFrames, !frames.isEmpty {
+            // During-scan capture provides camera transforms for better wall matching
+            damagePositions = positionCalculator.calculatePositionsWithCameraTransforms(
+                damages: damages,
+                frames: frames,
+                room: capturedRoom
+            )
+        } else {
+            // Fallback to basic room-based positioning
+            damagePositions = positionCalculator.calculatePositionsFromRoom(
+                damages: damages,
+                room: capturedRoom
+            )
+        }
     }
 }
 

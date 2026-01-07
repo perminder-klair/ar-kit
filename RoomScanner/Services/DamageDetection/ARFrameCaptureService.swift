@@ -180,6 +180,12 @@ final class ARFrameCaptureService: ObservableObject {
         frameCount = 0
     }
 
+    /// Add frames from external source (e.g., during-scan capture)
+    func addFrames(_ frames: [CapturedFrame]) {
+        capturedFrames.append(contentsOf: frames)
+        frameCount = capturedFrames.count
+    }
+
     /// Reset service for new scan
     func reset() {
         stopCapturing()

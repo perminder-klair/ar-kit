@@ -5,9 +5,10 @@ enum APIConfig {
     /// Base URL for the API
     /// Change this to your Vercel deployment URL in production
     #if DEBUG
-    static let baseURL = "http://localhost:3000"
+        static let baseURL = "https://fixzy-room-scanner.vercel.app"
+    //static let baseURL = "http://localhost:3000"
     #else
-    static let baseURL = "https://your-app.vercel.app"  // TODO: Update with your Vercel URL
+        static let baseURL = "https://fixzy-room-scanner.vercel.app"  // Update with your Vercel URL
     #endif
 
     /// API endpoints

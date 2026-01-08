@@ -1,0 +1,91 @@
+{
+  "damageAnalysis" : {
+    "analysisDate" : "2026-01-08T11:23:42Z",
+    "criticalDamages" : 0,
+    "damages" : [
+      {
+        "areaM2" : 0.014986491,
+        "confidence" : 0.95,
+        "description" : "Significant brownish water stain with signs of peeling paint and potential mold growth in the left portion of the affected area.",
+        "distanceM" : 0.41455078,
+        "heightM" : 0.108911194,
+        "recommendation" : "Investigate and repair the source of the water leak (roof or plumbing) before repairing the ceiling. Once dry, remove damaged material and repaint.",
+        "severity" : "low",
+        "surfaceType" : "floor",
+        "type" : "water_damage",
+        "widthM" : 0.13760285
+      },
+      {
+        "areaM2" : 0.006163302,
+        "confidence" : 0.9,
+        "description" : "Section of paint peeling away from the surface, likely caused by moisture penetration.",
+        "distanceM" : 0.54833984,
+        "heightM" : 0.059831537,
+        "recommendation" : "Remove peeling paint, ensure the surface is dry, and apply a stain-blocking primer before repainting.",
+        "severity" : "low",
+        "surfaceType" : "floor",
+        "type" : "peeling",
+        "widthM" : 0.10301092
+      },
+      {
+        "areaM2" : 0.00012473285,
+        "confidence" : 0.85,
+        "description" : "Small, isolated water spot located above the main damaged area.",
+        "distanceM" : 0.48120117,
+        "heightM" : 0.0152929425,
+        "recommendation" : "Monitor for further growth to determine if there is an active pinpoint leak.",
+        "severity" : "low",
+        "surfaceType" : "floor",
+        "type" : "stain",
+        "widthM" : 0.008156236
+      }
+    ],
+    "highPriorityDamages" : 0,
+    "overallCondition" : "good",
+    "totalDamagesFound" : 3
+  },
+  "exportDate" : "2026-01-08T11:23:56Z",
+  "roomDimensions" : {
+    "ceilingHeightM" : 2.37,
+    "floorAreaM2" : 0,
+    "volumeM3" : 0,
+    "wallAreaM2" : 9.515335
+  },
+  "surfaces" : {
+    "doors" : [
+
+    ],
+    "walls" : [
+      {
+        "areaM2" : 5.6835947,
+        "heightM" : 2.37,
+        "id" : "0C61148F-B107-44CB-B37F-A3825343BEC7",
+        "isCurved" : false,
+        "widthM" : 2.3981414
+      },
+      {
+        "areaM2" : 3.8317409,
+        "heightM" : 2.37,
+        "id" : "CB438AD7-1C6E-4CDA-B2C3-894008F1ACCE",
+        "isCurved" : false,
+        "widthM" : 1.6167684
+      }
+    ],
+    "windows" : [
+      {
+        "areaM2" : 0.14069407,
+        "heightM" : 0.3701867,
+        "id" : "E7D3D3F6-BC38-4847-A1D1-D92BFFBA9450",
+        "type" : "window",
+        "widthM" : 0.38006246
+      },
+      {
+        "areaM2" : 0.1896314,
+        "heightM" : 0.38091683,
+        "id" : "ADFFD9E1-ED7A-4659-8DF6-1FCF1E6D282E",
+        "type" : "window",
+        "widthM" : 0.49782887
+      }
+    ]
+  }
+}

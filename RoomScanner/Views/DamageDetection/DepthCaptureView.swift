@@ -1,6 +1,26 @@
 import ARKit
 import RealityKit
 import SwiftUI
+import UIKit
+
+// MARK: - Distance Quality
+
+private enum DistanceQuality {
+    case optimal      // 0.5-2.0m (green)
+    case acceptable   // 2.0-3.0m (yellow)
+    case tooClose     // <0.5m (red)
+    case tooFar       // >3.0m (red)
+    case unknown      // no depth data
+
+    var color: Color {
+        switch self {
+        case .optimal: return .green
+        case .acceptable: return .yellow
+        case .tooClose, .tooFar: return .red
+        case .unknown: return .gray
+        }
+    }
+}
 
 /// View for capturing depth frames with LiDAR after room scanning
 /// User manually captures photos when they see damage
@@ -11,6 +31,8 @@ struct DepthCaptureView: View {
     @State private var viewController: DepthCaptureARViewController?
     @State private var showCaptureFlash = false
     @State private var showCancelAlert = false
+    @State private var currentDistance: Float = 0
+    @State private var distanceQuality: DistanceQuality = .unknown
 
     var body: some View {
         ZStack {
@@ -22,6 +44,9 @@ struct DepthCaptureView: View {
                 },
                 onViewControllerCreated: { vc in
                     viewController = vc
+                },
+                onDistanceUpdated: { distance in
+                    updateDistance(distance)
                 }
             )
             .ignoresSafeArea()
@@ -39,6 +64,12 @@ struct DepthCaptureView: View {
                 captureStatusBar
                     .padding(.top, 30)
                     .padding(.horizontal)
+
+                // Distance indicator (shown when not in instructions)
+                if !showInstructions {
+                    distanceIndicator
+                        .padding(.top, 8)
+                }
 
                 // Floating cancel button - top right
                 HStack {
@@ -124,6 +155,48 @@ struct DepthCaptureView: View {
         .padding(.vertical, 12)
         .background(.ultraThinMaterial)
         .cornerRadius(16)
+    }
+
+    private var distanceIndicator: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "ruler")
+                .foregroundColor(distanceQuality.color)
+
+            Text(distanceText)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .monospacedDigit()
+
+            Circle()
+                .fill(distanceQuality.color)
+                .frame(width: 10, height: 10)
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .cornerRadius(20)
+    }
+
+    private var distanceText: String {
+        guard currentDistance > 0 else { return "-- m" }
+        return String(format: "%.1f m", currentDistance)
+    }
+
+    private func updateDistance(_ distance: Float) {
+        currentDistance = distance
+
+        if distance <= 0 {
+            distanceQuality = .unknown
+        } else if distance < 0.5 {
+            distanceQuality = .tooClose
+        } else if distance <= 2.0 {
+            distanceQuality = .optimal
+        } else if distance <= 3.0 {
+            distanceQuality = .acceptable
+        } else {
+            distanceQuality = .tooFar
+        }
     }
 
     private var instructionsOverlay: some View {
@@ -251,11 +324,13 @@ struct DepthCaptureARViewContainer: UIViewControllerRepresentable {
     let frameCaptureService: ARFrameCaptureService
     let onFrameCaptured: () -> Void
     var onViewControllerCreated: ((DepthCaptureARViewController) -> Void)?
+    var onDistanceUpdated: ((Float) -> Void)?
 
     func makeUIViewController(context: Context) -> DepthCaptureARViewController {
         let controller = DepthCaptureARViewController()
         controller.frameCaptureService = frameCaptureService
         controller.onFrameCaptured = onFrameCaptured
+        controller.onDistanceUpdated = onDistanceUpdated
 
         // Expose controller to SwiftUI
         DispatchQueue.main.async {
@@ -279,9 +354,11 @@ final class DepthCaptureARViewController: UIViewController {
 
     weak var frameCaptureService: ARFrameCaptureService?
     var onFrameCaptured: (() -> Void)?
+    var onDistanceUpdated: ((Float) -> Void)?
 
     private var isSessionRunning = false
     private var currentFrame: ARFrame?  // Store latest frame for manual capture
+    private var lastDistanceUpdate: Date = .distantPast
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -363,10 +440,37 @@ extension DepthCaptureARViewController: ARSessionDelegate {
         // Store the latest frame for manual capture
         // Don't auto-capture - user will tap button when they see damage
         currentFrame = frame
+
+        // Update distance indicator (throttled to ~10Hz)
+        let now = Date()
+        if now.timeIntervalSince(lastDistanceUpdate) >= 0.1 {
+            lastDistanceUpdate = now
+            if let sceneDepth = frame.sceneDepth {
+                let centerDepth = extractCenterDepth(from: sceneDepth.depthMap)
+                DispatchQueue.main.async {
+                    self.onDistanceUpdated?(centerDepth)
+                }
+            }
+        }
     }
 
     func session(_ session: ARSession, didFailWithError error: Error) {
         print("DepthCaptureARViewController: ARSession failed: \(error.localizedDescription)")
+    }
+
+    private func extractCenterDepth(from depthMap: CVPixelBuffer) -> Float {
+        let width = CVPixelBufferGetWidth(depthMap)
+        let height = CVPixelBufferGetHeight(depthMap)
+
+        CVPixelBufferLockBaseAddress(depthMap, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(depthMap, .readOnly) }
+
+        guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else { return 0 }
+        let floatBuffer = baseAddress.assumingMemoryBound(to: Float32.self)
+
+        // Sample center pixel
+        let centerIndex = (height / 2) * width + (width / 2)
+        return floatBuffer[centerIndex]
     }
 }
 

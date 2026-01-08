@@ -86,7 +86,7 @@ struct DamageDetailView: View {
                         .font(.title2)
                         .fontWeight(.bold)
 
-                    SurfaceTag(surfaceType: damage.surfaceType)
+                    SurfaceTag(surfaceType: damage.surfaceType, wallName: damage.wallName)
                 }
             }
         }
@@ -173,7 +173,7 @@ struct DamageDetailView: View {
 
             VStack(spacing: 8) {
                 DamageInfoRow(label: "Confidence", value: "\(Int(damage.confidence * 100))%")
-                DamageInfoRow(label: "Surface Type", value: damage.surfaceType.displayName)
+                DamageInfoRow(label: "Surface", value: damage.wallName ?? damage.surfaceType.displayName)
                 DamageInfoRow(label: "Damage Type", value: damage.type.rawValue)
 
                 if let bbox = damage.boundingBox {
@@ -208,13 +208,14 @@ private struct DamageInfoRow: View {
     }
 }
 
-#Preview("Without Measurements") {
+#Preview("Wall A Damage") {
     NavigationStack {
         DamageDetailView(damage: DetectedDamage(
             type: .crack,
             severity: .low,
             description: "A significant crack running diagonally across the wall surface, approximately 30cm in length with visible depth.",
             surfaceType: .wall,
+            wallName: "Wall A",
             confidence: 0.92,
             recommendation: "This crack should be inspected by a professional to determine if it's structural. Consider filling with appropriate filler for cosmetic repair if non-structural."
         ))

@@ -4,9 +4,10 @@ import RoomPlan
 
 /// 3D world position for a detected damage
 struct DamageWorldPosition {
-    let position: simd_float3   // 3D world coordinates
-    let damageId: UUID          // Links to DetectedDamage
-    let confidence: Float       // Position accuracy (0.0-1.0)
+    let position: simd_float3      // 3D world coordinates
+    let damageId: UUID             // Links to DetectedDamage
+    let confidence: Float          // Position accuracy (0.0-1.0)
+    let surfaceNormal: simd_float3 // Surface normal for box orientation
 }
 
 /// Calculates 3D world positions from 2D damage detections using depth data
@@ -141,7 +142,8 @@ final class DamagePositionCalculator {
         return DamageWorldPosition(
             position: offsetPosition,
             damageId: damage.id,
-            confidence: 0.7  // Lower confidence for surface-based placement
+            confidence: 0.7,  // Lower confidence for surface-based placement
+            surfaceNormal: normal
         )
     }
 
@@ -203,7 +205,8 @@ final class DamagePositionCalculator {
         return DamageWorldPosition(
             position: offsetPosition,
             damageId: damage.id,
-            confidence: confidence
+            confidence: confidence,
+            surfaceNormal: normal
         )
     }
 
@@ -356,10 +359,18 @@ final class DamagePositionCalculator {
         // 6. Calculate confidence
         let confidence = calculateConfidence(depth: depth, boundingBox: boundingBox)
 
+        // 7. Calculate surface normal (camera forward direction)
+        let cameraForward = -simd_normalize(simd_float3(
+            cameraTransform.columns.2.x,
+            cameraTransform.columns.2.y,
+            cameraTransform.columns.2.z
+        ))
+
         return DamageWorldPosition(
             position: worldPosition,
             damageId: damage.id,
-            confidence: confidence
+            confidence: confidence,
+            surfaceNormal: cameraForward
         )
     }
 

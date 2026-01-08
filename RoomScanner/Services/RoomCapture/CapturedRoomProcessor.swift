@@ -26,6 +26,7 @@ final class CapturedRoomProcessor {
 
     struct WallDimension: Identifiable {
         let id: UUID
+        let name: String // "Wall A", "Wall B", etc.
         let width: Float // meters
         let height: Float // meters
         let area: Float // square meters
@@ -103,9 +104,10 @@ final class CapturedRoomProcessor {
     // MARK: - Private Processing Methods
 
     private func processWalls(_ surfaces: [CapturedRoom.Surface]) -> [WallDimension] {
-        surfaces.map { surface in
+        surfaces.enumerated().map { index, surface in
             WallDimension(
                 id: surface.identifier,
+                name: wallName(for: index),
                 width: surface.dimensions.x,
                 height: surface.dimensions.y,
                 area: surface.dimensions.x * surface.dimensions.y,
@@ -114,6 +116,18 @@ final class CapturedRoomProcessor {
                 isCurved: surface.curve != nil,
                 polygonCorners: surface.polygonCorners
             )
+        }
+    }
+
+    /// Generate wall name from index (0 -> "Wall A", 1 -> "Wall B", etc.)
+    private func wallName(for index: Int) -> String {
+        let letter = Character(UnicodeScalar(65 + (index % 26))!) // A-Z
+        if index < 26 {
+            return "Wall \(letter)"
+        } else {
+            // For 26+ walls: Wall AA, Wall AB, etc.
+            let prefix = Character(UnicodeScalar(65 + (index / 26 - 1))!)
+            return "Wall \(prefix)\(letter)"
         }
     }
 

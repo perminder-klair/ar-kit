@@ -128,6 +128,7 @@ struct DetectedDamage: Identifiable, Codable {
     let description: String
     let surfaceType: SurfaceType
     let surfaceId: UUID?           // Links to CapturedRoom surface if mappable
+    let wallName: String?          // "Wall A", "Wall B", etc. - nil for non-wall surfaces
     let confidence: Float          // 0.0 - 1.0
     let boundingBox: DamageBoundingBox?
     let recommendation: String?
@@ -147,6 +148,7 @@ struct DetectedDamage: Identifiable, Codable {
         description: String,
         surfaceType: SurfaceType,
         surfaceId: UUID? = nil,
+        wallName: String? = nil,
         confidence: Float,
         boundingBox: DamageBoundingBox? = nil,
         recommendation: String? = nil,
@@ -163,6 +165,7 @@ struct DetectedDamage: Identifiable, Codable {
         self.description = description
         self.surfaceType = surfaceType
         self.surfaceId = surfaceId
+        self.wallName = wallName
         self.confidence = confidence
         self.boundingBox = boundingBox
         self.recommendation = recommendation

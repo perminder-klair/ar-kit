@@ -71,6 +71,11 @@ final class DamageAnalysisService: ObservableObject {
 
     private var capturedFramesForAnalysis: [CapturedFrame] = []
 
+    // MARK: - Wall Name Lookup
+
+    /// Maps wall UUIDs to their human-readable names ("Wall A", "Wall B", etc.)
+    private var wallNameLookup: [UUID: String] = [:]
+
     // MARK: - Configuration
 
     var isConfigured: Bool {
@@ -84,6 +89,27 @@ final class DamageAnalysisService: ObservableObject {
         currentRoom = room
         analysisResult = nil
         status = .idle
+        buildWallNameLookup(from: room)
+    }
+
+    /// Build wall name lookup from CapturedRoom walls
+    private func buildWallNameLookup(from room: CapturedRoom) {
+        wallNameLookup.removeAll()
+        for (index, wall) in room.walls.enumerated() {
+            wallNameLookup[wall.identifier] = wallName(for: index)
+        }
+    }
+
+    /// Generate wall name from index (0 -> "Wall A", 1 -> "Wall B", etc.)
+    private func wallName(for index: Int) -> String {
+        let letter = Character(UnicodeScalar(65 + (index % 26))!) // A-Z
+        if index < 26 {
+            return "Wall \(letter)"
+        } else {
+            // For 26+ walls: Wall AA, Wall AB, etc.
+            let prefix = Character(UnicodeScalar(65 + (index / 26 - 1))!)
+            return "Wall \(prefix)\(letter)"
+        }
     }
 
     /// Add image for analysis
@@ -358,6 +384,9 @@ final class DamageAnalysisService: ObservableObject {
     ) -> DetectedDamage {
         let damageType = DamageType(rawValue: item.type) ?? .other
 
+        // Look up wall name if this is a wall surface with a known ID
+        let wallName: String? = surfaceId.flatMap { wallNameLookup[$0] }
+
         var boundingBox: DamageBoundingBox?
         if let box = item.boundingBox {
             boundingBox = DamageBoundingBox(
@@ -374,6 +403,7 @@ final class DamageAnalysisService: ObservableObject {
             description: item.description,
             surfaceType: surfaceType,
             surfaceId: surfaceId,
+            wallName: wallName,
             confidence: item.confidence,
             boundingBox: boundingBox,
             recommendation: item.recommendation,
@@ -390,6 +420,9 @@ final class DamageAnalysisService: ObservableObject {
         frame: CapturedFrame?
     ) -> DetectedDamage {
         let damageType = DamageType(rawValue: item.type) ?? .other
+
+        // Look up wall name if this is a wall surface with a known ID
+        let wallName: String? = surfaceId.flatMap { wallNameLookup[$0] }
 
         var boundingBox: DamageBoundingBox?
         if let box = item.boundingBox {
@@ -439,6 +472,7 @@ final class DamageAnalysisService: ObservableObject {
             description: item.description,
             surfaceType: surfaceType,
             surfaceId: surfaceId,
+            wallName: wallName,
             confidence: item.confidence,
             boundingBox: boundingBox,
             recommendation: item.recommendation,

@@ -84,11 +84,12 @@ struct ConditionBadge: View {
 
 struct SurfaceTag: View {
     let surfaceType: SurfaceType
+    var wallName: String? = nil
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: surfaceIcon)
-            Text(surfaceType.displayName)
+            Text(displayText)
         }
         .font(.caption)
         .foregroundColor(.secondary)
@@ -96,6 +97,13 @@ struct SurfaceTag: View {
         .padding(.vertical, 4)
         .background(Color.secondary.opacity(0.1))
         .clipShape(Capsule())
+    }
+
+    private var displayText: String {
+        if surfaceType == .wall, let name = wallName {
+            return name // "Wall A", "Wall B", etc.
+        }
+        return surfaceType.displayName
     }
 
     private var surfaceIcon: String {
@@ -175,7 +183,7 @@ struct DamageCard: View {
                     .foregroundColor(.secondary)
                     .lineLimit(2)
 
-                SurfaceTag(surfaceType: damage.surfaceType)
+                SurfaceTag(surfaceType: damage.surfaceType, wallName: damage.wallName)
             }
 
             Image(systemName: "chevron.right")

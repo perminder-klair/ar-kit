@@ -155,33 +155,43 @@ struct SceneKitView: UIViewRepresentable {
         markersNode.name = "DamageMarkers"
 
         for position in damagePositions {
-            let damage = damages.first { $0.id == position.damageId }
-            let markerNode = createMarkerNode(
-                at: position.position,
-                severity: damage?.severity ?? .moderate
-            )
-            markersNode.addChildNode(markerNode)
+            if let damage = damages.first(where: { $0.id == position.damageId }) {
+                let markerNode = createMarkerNode(
+                    at: position.position,
+                    damage: damage,
+                    surfaceNormal: position.surfaceNormal
+                )
+                markersNode.addChildNode(markerNode)
+            }
         }
 
         scene.rootNode.addChildNode(markersNode)
     }
 
-    private func createMarkerNode(at position: simd_float3, severity: DamageSeverity) -> SCNNode {
-        // Create sphere marker
-        let sphere = SCNSphere(radius: 0.03)
+    private func createMarkerNode(
+        at position: simd_float3,
+        damage: DetectedDamage,
+        surfaceNormal: simd_float3
+    ) -> SCNNode {
+        // Use actual dimensions if available, fallback to 6cm default
+        let width = CGFloat(damage.realWidth ?? 0.06)
+        let height = CGFloat(damage.realHeight ?? 0.06)
+        let depth: CGFloat = 0.01  // 1cm thin box
+
+        let box = SCNBox(width: width, height: height, length: depth, chamferRadius: 0.003)
 
         let material = SCNMaterial()
-        material.diffuse.contents = colorForSeverity(severity)
-        material.emission.contents = colorForSeverity(severity).withAlphaComponent(0.3)
-        sphere.materials = [material]
+        material.diffuse.contents = colorForSeverity(damage.severity).withAlphaComponent(0.7)
+        material.emission.contents = colorForSeverity(damage.severity).withAlphaComponent(0.2)
+        material.isDoubleSided = true
+        box.materials = [material]
 
-        let markerNode = SCNNode(geometry: sphere)
+        let markerNode = SCNNode(geometry: box)
         markerNode.position = SCNVector3(position.x, position.y, position.z)
 
-        // Add billboard constraint so marker always faces camera
-        let constraint = SCNBillboardConstraint()
-        constraint.freeAxes = .all
-        markerNode.constraints = [constraint]
+        // Orient box to face along surface normal
+        let forward = simd_float3(0, 0, 1)  // SCNBox default faces +Z
+        markerNode.simdOrientation = simd_quatf(from: forward, to: surfaceNormal)
 
         return markerNode
     }

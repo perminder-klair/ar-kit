@@ -23,7 +23,8 @@ struct DimensionsView: View {
                 RoomModelViewer(
                     capturedRoom: capturedRoom,
                     damages: appState.damageAnalysisResult?.detectedDamages,
-                    capturedFrames: appState.frameCaptureService.capturedFrames
+                    capturedFrames: appState.frameCaptureService.capturedFrames,
+                    ceilingHeight: dimensions?.ceilingHeight
                 )
                 .frame(height: 300)
                 .background(Color(.systemGray6))

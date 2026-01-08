@@ -423,7 +423,8 @@ final class RoomExporter {
             let damagePositions = positionCalculator.calculatePositionsWithCameraTransforms(
                 damages: analysis.detectedDamages,
                 frames: capturedFrames,
-                room: capturedRoom
+                room: capturedRoom,
+                ceilingHeight: dimensions.ceilingHeight
             )
 
             for damage in analysis.detectedDamages {

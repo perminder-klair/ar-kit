@@ -42,7 +42,8 @@ struct ReportView: View {
                     RoomModelSection(
                         capturedRoom: capturedRoom,
                         damages: appState.damageAnalysisResult?.detectedDamages,
-                        capturedFrames: appState.frameCaptureService.capturedFrames
+                        capturedFrames: appState.frameCaptureService.capturedFrames,
+                        ceilingHeight: dimensions?.ceilingHeight
                     )
 
                     // Quick Stats
@@ -390,6 +391,7 @@ struct RoomModelSection: View {
     let capturedRoom: CapturedRoom
     let damages: [DetectedDamage]?
     let capturedFrames: [CapturedFrame]?
+    let ceilingHeight: Float?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -399,7 +401,8 @@ struct RoomModelSection: View {
             RoomModelViewer(
                 capturedRoom: capturedRoom,
                 damages: damages,
-                capturedFrames: capturedFrames
+                capturedFrames: capturedFrames,
+                ceilingHeight: ceilingHeight
             )
             .frame(height: 250)
             .background(Color(.systemGray6))

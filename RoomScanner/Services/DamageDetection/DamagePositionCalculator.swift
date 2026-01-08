@@ -18,9 +18,13 @@ final class DamagePositionCalculator {
     private let minValidDepth: Float = 0.1
     private let maxValidDepth: Float = 5.0
     private let depthSampleGrid = 3
+    private let defaultCeilingHeight: Float = 2.4
 
     // Track which wall index to use for distributing damages
     private var wallDamageIndex = 0
+
+    // Actual ceiling height from room scan (set per calculation)
+    private var ceilingHeight: Float = 2.4
 
     // MARK: - Public Methods
 
@@ -28,10 +32,12 @@ final class DamagePositionCalculator {
     /// Uses RoomPlan's coordinate system which matches the USDZ export
     func calculatePositionsFromRoom(
         damages: [DetectedDamage],
-        room: CapturedRoom
+        room: CapturedRoom,
+        ceilingHeight: Float? = nil
     ) -> [DamageWorldPosition] {
         var positions: [DamageWorldPosition] = []
         wallDamageIndex = 0  // Reset for each calculation
+        self.ceilingHeight = ceilingHeight ?? defaultCeilingHeight
 
         for damage in damages {
             if let position = findSurfacePosition(for: damage, in: room) {
@@ -47,9 +53,11 @@ final class DamagePositionCalculator {
     func calculatePositionsWithCameraTransforms(
         damages: [DetectedDamage],
         frames: [CapturedFrame],
-        room: CapturedRoom
+        room: CapturedRoom,
+        ceilingHeight: Float? = nil
     ) -> [DamageWorldPosition] {
         var positions: [DamageWorldPosition] = []
+        self.ceilingHeight = ceilingHeight ?? defaultCeilingHeight
 
         for damage in damages {
             // Get the frame where this damage was detected
@@ -110,8 +118,8 @@ final class DamagePositionCalculator {
             // Use floor position with ceiling height offset
             if let floorTransform = room.floors.first?.transform {
                 var ceilingTransform = floorTransform
-                // Offset Y by approximate ceiling height (2.4m typical)
-                ceilingTransform.columns.3.y += 2.4
+                // Offset Y by actual ceiling height from room scan
+                ceilingTransform.columns.3.y += ceilingHeight
                 transform = ceilingTransform
             }
         case .door:
@@ -176,7 +184,7 @@ final class DamagePositionCalculator {
         case .ceiling:
             if let floorTransform = room.floors.first?.transform {
                 var ceilingTransform = floorTransform
-                ceilingTransform.columns.3.y += 2.4
+                ceilingTransform.columns.3.y += ceilingHeight
                 transform = ceilingTransform
             }
         case .door:

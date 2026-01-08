@@ -8,6 +8,7 @@ struct RoomModelViewer: View {
     let capturedRoom: CapturedRoom
     let damages: [DetectedDamage]?
     let capturedFrames: [CapturedFrame]?
+    let ceilingHeight: Float?
 
     @State private var modelURL: URL?
     @State private var isLoading = true
@@ -19,11 +20,13 @@ struct RoomModelViewer: View {
     init(
         capturedRoom: CapturedRoom,
         damages: [DetectedDamage]? = nil,
-        capturedFrames: [CapturedFrame]? = nil
+        capturedFrames: [CapturedFrame]? = nil,
+        ceilingHeight: Float? = nil
     ) {
         self.capturedRoom = capturedRoom
         self.damages = damages
         self.capturedFrames = capturedFrames
+        self.ceilingHeight = ceilingHeight
     }
 
     var body: some View {
@@ -89,13 +92,15 @@ struct RoomModelViewer: View {
             damagePositions = positionCalculator.calculatePositionsWithCameraTransforms(
                 damages: damages,
                 frames: frames,
-                room: capturedRoom
+                room: capturedRoom,
+                ceilingHeight: ceilingHeight
             )
         } else {
             // Fallback to basic room-based positioning
             damagePositions = positionCalculator.calculatePositionsFromRoom(
                 damages: damages,
-                room: capturedRoom
+                room: capturedRoom,
+                ceilingHeight: ceilingHeight
             )
         }
     }

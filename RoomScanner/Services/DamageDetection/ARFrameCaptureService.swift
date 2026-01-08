@@ -228,7 +228,7 @@ final class ARFrameCaptureService: ObservableObject {
         // Positive pitch = device tilted up (looking at ceiling)
         // Negative pitch = device tilted down (looking at floor)
         let pitch = motion.attitude.pitch
-        let threshold = 0.52  // ~30 degrees in radians
+        let threshold = 0.35  // ~20 degrees in radians (lowered to detect ceiling at smaller angles)
 
         let newType: SurfaceType
         if pitch > threshold {
@@ -267,8 +267,8 @@ final class ARFrameCaptureService: ObservableObject {
         // Normalize for safety (should already be normalized from ARKit)
         let normalizedForward = simd_normalize(forward)
 
-        // Threshold: ~30 degrees from vertical = sin(30) ≈ 0.5
-        let verticalThreshold: Float = 0.5
+        // Threshold: ~20 degrees from vertical = sin(20) ≈ 0.35 (lowered to detect ceiling at smaller angles)
+        let verticalThreshold: Float = 0.35
 
         if normalizedForward.y < -verticalThreshold {
             // Camera looking UP (negative Y means pointing toward ceiling)

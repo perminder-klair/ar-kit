@@ -4,6 +4,7 @@ import Link from "next/link";
 import { StatsGrid } from "@/components/StatsGrid";
 import { DamageList } from "@/components/DamageList";
 import { DeleteButton } from "@/components/DeleteButton";
+import { ExportButton } from "@/components/ExportButton";
 
 type Params = Promise<{ id: string }>;
 
@@ -111,6 +112,14 @@ export default async function ReportDetailPage({
               <p className="text-2xl font-bold">{report.damages.length}</p>
               <p className="text-sm text-gray-500">Issues</p>
             </div>
+          </div>
+        </div>
+
+        {/* Export Options */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Export Options</h2>
+          <div className="flex gap-4">
+            <ExportButton reportId={report.id} />
           </div>
         </div>
 

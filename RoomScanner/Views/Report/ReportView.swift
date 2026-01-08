@@ -13,6 +13,11 @@ struct ReportView: View {
     @State private var showShareSheet = false
     @State private var exportedFileURL: URL?
 
+    // Haptic triggers
+    @State private var exportTapHaptic = false
+    @State private var exportSuccessHaptic = false
+    @State private var exportErrorHaptic = false
+
     private let processor = CapturedRoomProcessor()
     private let exporter = RoomExporter()
 
@@ -84,11 +89,15 @@ struct ReportView: View {
         .onAppear {
             dimensions = processor.extractDimensions(from: capturedRoom)
         }
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: exportTapHaptic)
+        .sensoryFeedback(.success, trigger: exportSuccessHaptic)
+        .sensoryFeedback(.error, trigger: exportErrorHaptic)
     }
 
     // MARK: - Export Methods
 
     private func exportUSDZ() {
+        exportTapHaptic.toggle()
         Task {
             isExporting = true
             defer { isExporting = false }
@@ -97,13 +106,16 @@ struct ReportView: View {
                 let url = try await exporter.exportUSDZ(capturedRoom: capturedRoom)
                 exportedFileURL = url
                 showShareSheet = true
+                exportSuccessHaptic.toggle()
             } catch {
                 exportError = error.localizedDescription
+                exportErrorHaptic.toggle()
             }
         }
     }
 
     private func exportJSON() {
+        exportTapHaptic.toggle()
         Task {
             isExporting = true
             defer { isExporting = false }
@@ -116,13 +128,16 @@ struct ReportView: View {
                 )
                 exportedFileURL = url
                 showShareSheet = true
+                exportSuccessHaptic.toggle()
             } catch {
                 exportError = error.localizedDescription
+                exportErrorHaptic.toggle()
             }
         }
     }
 
     private func exportPDF() {
+        exportTapHaptic.toggle()
         Task {
             isExporting = true
             defer { isExporting = false }
@@ -137,13 +152,16 @@ struct ReportView: View {
                 )
                 exportedFileURL = url
                 showShareSheet = true
+                exportSuccessHaptic.toggle()
             } catch {
                 exportError = error.localizedDescription
+                exportErrorHaptic.toggle()
             }
         }
     }
 
     private func exportThreeJS() {
+        exportTapHaptic.toggle()
         Task {
             isExporting = true
             defer { isExporting = false }
@@ -158,8 +176,10 @@ struct ReportView: View {
                 )
                 exportedFileURL = url
                 showShareSheet = true
+                exportSuccessHaptic.toggle()
             } catch {
                 exportError = error.localizedDescription
+                exportErrorHaptic.toggle()
             }
         }
     }

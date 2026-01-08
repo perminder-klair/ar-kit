@@ -1,15 +1,14 @@
 import ARKit
 import RealityKit
 import SwiftUI
-import UIKit
 
 // MARK: - Distance Quality
 
 private enum DistanceQuality {
-    case optimal      // 0.5-2.0m (green)
-    case acceptable   // 2.0-3.0m (yellow)
+    case optimal      // 0.5-1.5m (green)
+    case acceptable   // 1.5-2.5m (yellow)
     case tooClose     // <0.5m (red)
-    case tooFar       // >3.0m (red)
+    case tooFar       // >2.5m (red)
     case unknown      // no depth data
 
     var color: Color {
@@ -33,6 +32,12 @@ struct DepthCaptureView: View {
     @State private var showCancelAlert = false
     @State private var currentDistance: Float = 0
     @State private var distanceQuality: DistanceQuality = .unknown
+
+    // Haptic triggers
+    @State private var captureHapticTrigger = false
+    @State private var startHapticTrigger = false
+    @State private var doneHapticTrigger = false
+    @State private var distanceHapticTrigger = false
 
     var body: some View {
         ZStack {
@@ -65,10 +70,22 @@ struct DepthCaptureView: View {
                     .padding(.top, 30)
                     .padding(.horizontal)
 
-                // Distance indicator (shown when not in instructions)
+                // Distance indicator and hint (shown when not in instructions)
                 if !showInstructions {
-                    distanceIndicator
-                        .padding(.top, 8)
+                    HStack(spacing: 12) {
+                        distanceIndicator
+
+                        Text(hintMessage)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(distanceQuality == .optimal || distanceQuality == .unknown
+                                ? Color.black.opacity(0.5)
+                                : distanceQuality.color.opacity(0.8))
+                            .cornerRadius(20)
+                    }
+                    .padding(.top, 8)
                 }
 
                 // Floating cancel button - top right
@@ -94,17 +111,6 @@ struct DepthCaptureView: View {
                         .transition(.opacity)
                 }
 
-                // Hint text when capturing (disappears after first capture)
-                if !showInstructions && capturedCount == 0 {
-                    Text("Point at damage, then tap capture")
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(Color.black.opacity(0.5))
-                        .cornerRadius(20)
-                }
-
                 Spacer()
 
                 // Bottom controls
@@ -127,6 +133,10 @@ struct DepthCaptureView: View {
             appState.frameCaptureService.clearFrames()
             capturedCount = 0
         }
+        .sensoryFeedback(.impact, trigger: captureHapticTrigger)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: startHapticTrigger)
+        .sensoryFeedback(.success, trigger: doneHapticTrigger)
+        .sensoryFeedback(.impact(weight: .light), trigger: distanceHapticTrigger)
     }
 
     private var captureStatusBar: some View {
@@ -185,17 +195,36 @@ struct DepthCaptureView: View {
 
     private func updateDistance(_ distance: Float) {
         currentDistance = distance
+        let previousQuality = distanceQuality
 
         if distance <= 0 {
             distanceQuality = .unknown
         } else if distance < 0.5 {
             distanceQuality = .tooClose
-        } else if distance <= 2.0 {
+        } else if distance <= 1.5 {
             distanceQuality = .optimal
-        } else if distance <= 3.0 {
+        } else if distance <= 2.5 {
             distanceQuality = .acceptable
         } else {
             distanceQuality = .tooFar
+        }
+
+        // Trigger haptic when quality changes
+        if distanceQuality != previousQuality && previousQuality != .unknown {
+            distanceHapticTrigger.toggle()
+        }
+    }
+
+    private var hintMessage: String {
+        switch distanceQuality {
+        case .tooClose:
+            return "Move back - too close"
+        case .tooFar:
+            return "Move closer to damage"
+        case .acceptable:
+            return "Good, but closer is better"
+        case .optimal, .unknown:
+            return "Point at damage, then tap capture"
         }
     }
 
@@ -217,6 +246,7 @@ struct DepthCaptureView: View {
             }
 
             Button {
+                startHapticTrigger.toggle()
                 withAnimation {
                     showInstructions = false
                 }
@@ -263,6 +293,7 @@ struct DepthCaptureView: View {
 
             // Done button
             Button {
+                doneHapticTrigger.toggle()
                 appState.startDamageAnalysis()
             } label: {
                 Text("Done")
@@ -282,8 +313,7 @@ struct DepthCaptureView: View {
 
     private func capturePhoto() {
         // Haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        captureHapticTrigger.toggle()
 
         // Flash effect
         withAnimation(.easeIn(duration: 0.1)) {

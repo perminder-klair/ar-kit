@@ -171,6 +171,10 @@ struct RoomScanView: View {
     @State private var scanCompletenessResult: RoomCaptureService.ScanCompletenessResult?
     @State private var showInstructions = true
 
+    // Haptic triggers
+    @State private var startScanHaptic = false
+    @State private var stopScanHaptic = false
+
     var body: some View {
         ZStack {
             // RoomCaptureView with AR scanning lines and coaching UI
@@ -291,6 +295,8 @@ struct RoomScanView: View {
             delegate.appState = appState
             checkCameraPermission()
         }
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: startScanHaptic)
+        .sensoryFeedback(.impact, trigger: stopScanHaptic)
     }
 
     private func checkCameraPermission() {
@@ -317,6 +323,7 @@ struct RoomScanView: View {
     }
 
     private func stopScanning() {
+        stopScanHaptic.toggle()
         let result = appState.roomCaptureService.checkScanCompleteness()
 
         if result.isComplete {
@@ -346,6 +353,7 @@ struct RoomScanView: View {
             }
 
             Button {
+                startScanHaptic.toggle()
                 withAnimation {
                     showInstructions = false
                 }

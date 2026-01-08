@@ -6,7 +6,7 @@ final class ImageCaptureHelper {
 
     // MARK: - Configuration
 
-    private let maxDimension: CGFloat = 2048
+    private let maxDimension: CGFloat = 1024
     private let compressionQuality: CGFloat = 0.8
 
     // MARK: - Public Methods

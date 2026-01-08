@@ -12,6 +12,9 @@ struct ReportView: View {
     @State private var exportError: String?
     @State private var showShareSheet = false
     @State private var exportedFileURL: URL?
+    @State private var isSavingToCloud = false
+    @State private var savedReportId: String?
+    @State private var showSaveSuccess = false
 
     // Haptic triggers
     @State private var exportTapHaptic = false
@@ -30,7 +33,8 @@ struct ReportView: View {
                         onExportUSDZ: exportUSDZ,
                         onExportJSON: exportJSON,
                         onExportPDF: exportPDF,
-                        onExportThreeJS: exportThreeJS
+                        onExportThreeJS: exportThreeJS,
+                        onSaveToCloud: saveToCloud
                     )
 
                     // Damage Analysis Summary (if available)
@@ -76,10 +80,16 @@ struct ReportView: View {
                 }
             }
             .loadingOverlay(isLoading: isExporting, message: "Exporting...")
+            .loadingOverlay(isLoading: isSavingToCloud, message: "Saving to Cloud...")
             .alert("Export Error", isPresented: .constant(exportError != nil)) {
                 Button("OK") { exportError = nil }
             } message: {
                 Text(exportError ?? "")
+            }
+            .alert("Saved to Cloud", isPresented: $showSaveSuccess) {
+                Button("OK") { }
+            } message: {
+                Text("Report saved successfully.\nID: \(savedReportId ?? "")")
             }
             .sheet(isPresented: $showShareSheet) {
                 if let url = exportedFileURL {
@@ -184,6 +194,28 @@ struct ReportView: View {
             }
         }
     }
+
+    private func saveToCloud() {
+        exportTapHaptic.toggle()
+        Task {
+            isSavingToCloud = true
+            defer { isSavingToCloud = false }
+
+            do {
+                guard let dims = dimensions else { return }
+                let reportId = try await ReportAPIService.shared.saveReport(
+                    dimensions: dims,
+                    damageResult: appState.damageAnalysisResult
+                )
+                savedReportId = reportId
+                showSaveSuccess = true
+                exportSuccessHaptic.toggle()
+            } catch {
+                exportError = error.localizedDescription
+                exportErrorHaptic.toggle()
+            }
+        }
+    }
 }
 
 // MARK: - Damage Report Section
@@ -249,6 +281,7 @@ struct ExportOptionsSection: View {
     let onExportJSON: () -> Void
     let onExportPDF: () -> Void
     let onExportThreeJS: () -> Void
+    let onSaveToCloud: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -256,6 +289,14 @@ struct ExportOptionsSection: View {
                 .font(.headline)
 
             VStack(spacing: 12) {
+                ExportButton(
+                    icon: "icloud.and.arrow.up",
+                    title: "Save to Cloud",
+                    description: "Store report in database",
+                    color: .green,
+                    action: onSaveToCloud
+                )
+
                 ExportButton(
                     icon: "cube",
                     title: "3D Model (USDZ)",

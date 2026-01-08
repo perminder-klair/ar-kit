@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E7472A6CD9D887F5475A0444 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0F8AAF84B2EB924D375027 /* APIConfig.swift */; };
+		9C7AD05108F79C854C9AC609 /* ReportAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A3841DB724467371E92CE3 /* ReportAPIService.swift */; };
 		7E6C1CAB2F0C0282000AE92A /* RoomScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1CA52F0C0282000AE92A /* RoomScanView.swift */; };
 		7E6C1CAC2F0C0282000AE92A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1C902F0C0282000AE92A /* ContentView.swift */; };
 		7E6C1CAD2F0C0282000AE92A /* DimensionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6C1CA02F0C0282000AE92A /* DimensionsView.swift */; };
@@ -38,6 +40,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		6A0F8AAF84B2EB924D375027 /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
+		72A3841DB724467371E92CE3 /* ReportAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportAPIService.swift; sourceTree = "<group>"; };
 		7E6C1C8F2F0C0282000AE92A /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		7E6C1C902F0C0282000AE92A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7E6C1C912F0C0282000AE92A /* RoomScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomScannerApp.swift; sourceTree = "<group>"; };
@@ -131,7 +135,7 @@
 				7E6C1D212F0C0283000AE92A /* DamageDetection */,
 				7E6C1C982F0C0282000AE92A /* Export */,
 				7E6C1C9B2F0C0282000AE92A /* RoomCapture */,
-			);
+				A9EB063617E72BB6C0255BDC /* API */,);
 			path = Services;
 			sourceTree = "<group>";
 		};
@@ -245,6 +249,16 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+
+		A9EB063617E72BB6C0255BDC /* API */ = {
+			isa = PBXGroup;
+			children = (
+				6A0F8AAF84B2EB924D375027 /* APIConfig.swift */,
+				72A3841DB724467371E92CE3 /* ReportAPIService.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -344,7 +358,8 @@
 				7E6C1D272F0C0288000AE92A /* DamagePositionCalculator.swift in Sources */,
 				7E6C1D242F0C0286000AE92A /* DepthCaptureView.swift in Sources */,
 				7E6C1D252F0C0287000AE92A /* RoomModelViewer.swift in Sources */,
-			);
+				E7472A6CD9D887F5475A0444 /* APIConfig.swift in Sources */,
+				9C7AD05108F79C854C9AC609 /* ReportAPIService.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
@@ -472,7 +487,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = BU9RD766GN;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -495,7 +510,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = co.klair.FixzyRoomScanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -519,7 +534,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = BU9RD766GN;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -542,7 +557,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = co.klair.FixzyRoomScanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

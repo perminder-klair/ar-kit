@@ -167,6 +167,9 @@ struct RoomScanView: View {
     @State private var viewController: RoomCaptureViewController?
     @State private var cameraPermissionGranted = false
     @State private var permissionChecked = false
+    @State private var showIncompleteScanAlert = false
+    @State private var scanCompletenessResult: RoomCaptureService.ScanCompletenessResult?
+    @State private var showInstructions = true
 
     var body: some View {
         ZStack {
@@ -222,8 +225,8 @@ struct RoomScanView: View {
                     .foregroundColor(.white)
             }
 
-            // Controls overlay (shown when permission granted)
-            if cameraPermissionGranted {
+            // Controls overlay (shown when permission granted and instructions dismissed)
+            if cameraPermissionGranted && !showInstructions {
                 VStack {
                     Spacer()
                     HStack {
@@ -248,10 +251,20 @@ struct RoomScanView: View {
                                     .clipShape(Circle())
                             }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 16)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(40)
                         .padding(.trailing, 20)
                         .padding(.bottom, 40)
                     }
                 }
+            }
+
+            // Instructions overlay (shown initially)
+            if showInstructions && cameraPermissionGranted {
+                instructionsOverlay
+                    .transition(.opacity)
             }
         }
         .navigationBarHidden(true)
@@ -263,6 +276,16 @@ struct RoomScanView: View {
             }
         } message: {
             Text("Your scan progress will be lost.")
+        }
+        .alert("Incomplete Scan", isPresented: $showIncompleteScanAlert) {
+            Button("Continue Scanning", role: .cancel) { }
+            Button("Complete Anyway", role: .destructive) {
+                viewController?.stopSession()
+            }
+        } message: {
+            if let result = scanCompletenessResult {
+                Text(result.warningMessage + "\n\nYour room measurements may be inaccurate.")
+            }
         }
         .onAppear {
             delegate.appState = appState
@@ -294,7 +317,69 @@ struct RoomScanView: View {
     }
 
     private func stopScanning() {
-        viewController?.stopSession()
+        let result = appState.roomCaptureService.checkScanCompleteness()
+
+        if result.isComplete {
+            viewController?.stopSession()
+        } else {
+            scanCompletenessResult = result
+            showIncompleteScanAlert = true
+        }
+    }
+
+    private var instructionsOverlay: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "camera.metering.matrix")
+                .font(.system(size: 50))
+                .foregroundColor(.white)
+
+            Text("Scan Your Room")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+
+            VStack(alignment: .leading, spacing: 12) {
+                ScanInstructionItem(icon: "arrow.triangle.2.circlepath", text: "Walk slowly around the room")
+                ScanInstructionItem(icon: "square.dashed", text: "Point at walls, floor, and ceiling")
+                ScanInstructionItem(icon: "door.left.hand.open", text: "Include doors and windows")
+                ScanInstructionItem(icon: "checkmark.circle", text: "Tap stop when complete")
+            }
+
+            Button {
+                withAnimation {
+                    showInstructions = false
+                }
+            } label: {
+                Text("Start Scanning")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.blue)
+                    .cornerRadius(12)
+            }
+            .padding(.top, 8)
+        }
+        .padding(24)
+        .background(.ultraThinMaterial)
+        .cornerRadius(20)
+        .padding(.horizontal, 20)
+    }
+}
+
+private struct ScanInstructionItem: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .frame(width: 24)
+                .foregroundColor(.blue)
+            Text(text)
+                .foregroundColor(.white)
+        }
+        .font(.subheadline)
     }
 }
 

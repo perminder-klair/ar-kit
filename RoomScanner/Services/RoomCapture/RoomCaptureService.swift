@@ -46,6 +46,19 @@ final class RoomCaptureService: ObservableObject {
         }
     }
 
+    struct ScanCompletenessResult {
+        let isComplete: Bool
+        let wallCount: Int
+        let hasFloor: Bool
+        let warnings: [String]
+
+        static let minimumWallCount = 3
+
+        var warningMessage: String {
+            warnings.joined(separator: "\n")
+        }
+    }
+
     enum RoomCaptureError: LocalizedError {
         case noActiveSession
         case noDataCaptured
@@ -89,6 +102,38 @@ final class RoomCaptureService: ObservableObject {
         currentRoom = room
         detectedItems.update(from: room)
         scanState = .scanning
+    }
+
+    /// Check if current scan has minimum required data for accurate dimensions
+    func checkScanCompleteness() -> ScanCompletenessResult {
+        guard let room = currentRoom else {
+            return ScanCompletenessResult(
+                isComplete: false,
+                wallCount: 0,
+                hasFloor: false,
+                warnings: ["No room data captured"]
+            )
+        }
+
+        var warnings: [String] = []
+        let wallCount = room.walls.count
+        let hasFloor = !room.floors.isEmpty
+
+        if wallCount < ScanCompletenessResult.minimumWallCount {
+            let wallText = wallCount == 1 ? "wall" : "walls"
+            warnings.append("Only \(wallCount) \(wallText) detected (minimum \(ScanCompletenessResult.minimumWallCount) recommended)")
+        }
+
+        if !hasFloor {
+            warnings.append("No floor surface detected")
+        }
+
+        return ScanCompletenessResult(
+            isComplete: warnings.isEmpty,
+            wallCount: wallCount,
+            hasFloor: hasFloor,
+            warnings: warnings
+        )
     }
 
     /// Handle scan session end

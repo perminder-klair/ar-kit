@@ -1,5 +1,5 @@
-import SwiftUI
 import RoomPlan
+import SwiftUI
 
 /// View displaying room dimensions and measurements
 struct DimensionsView: View {
@@ -45,7 +45,6 @@ struct DimensionsView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "house")
-                        Text("Home")
                     }
                 }
             }
@@ -56,7 +55,6 @@ struct DimensionsView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "doc.text")
-                        Text("Report")
                     }
                 }
             }
@@ -67,7 +65,7 @@ struct DimensionsView: View {
             } label: {
                 HStack {
                     Image(systemName: "camera.viewfinder")
-                    Text("Capture for Damage Analysis")
+                    Text("Capture Damage Photos")
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -92,14 +90,13 @@ struct SummaryCard: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Room Summary")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 16) {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                ], spacing: 16
+            ) {
                 SummaryItem(
                     icon: "square.dashed",
                     title: "Floor Area",
@@ -200,7 +197,8 @@ struct DetailedMeasurements: View {
             if !dimensions.doors.isEmpty {
                 Section {
                     ForEach(Array(dimensions.doors.enumerated()), id: \.element.id) { index, door in
-                        OpeningRow(opening: door, index: index + 1, dimensions: dimensions, unit: unit)
+                        OpeningRow(
+                            opening: door, index: index + 1, dimensions: dimensions, unit: unit)
                     }
                 } header: {
                     SectionHeader(title: "Doors", count: dimensions.doorCount)
@@ -210,8 +208,10 @@ struct DetailedMeasurements: View {
             // Windows Section
             if !dimensions.windows.isEmpty {
                 Section {
-                    ForEach(Array(dimensions.windows.enumerated()), id: \.element.id) { index, window in
-                        OpeningRow(opening: window, index: index + 1, dimensions: dimensions, unit: unit)
+                    ForEach(Array(dimensions.windows.enumerated()), id: \.element.id) {
+                        index, window in
+                        OpeningRow(
+                            opening: window, index: index + 1, dimensions: dimensions, unit: unit)
                     }
                 } header: {
                     SectionHeader(title: "Windows", count: dimensions.windowCount)
@@ -259,8 +259,12 @@ struct WallRow: View {
                 }
 
                 HStack(spacing: 16) {
-                    Label(dimensions.format(wall.width, unit: unit), systemImage: "arrow.left.and.right")
-                    Label(dimensions.format(wall.height, unit: unit), systemImage: "arrow.up.and.down")
+                    Label(
+                        dimensions.format(wall.width, unit: unit),
+                        systemImage: "arrow.left.and.right")
+                    Label(
+                        dimensions.format(wall.height, unit: unit), systemImage: "arrow.up.and.down"
+                    )
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -291,8 +295,12 @@ struct OpeningRow: View {
                     .font(.subheadline.bold())
 
                 HStack(spacing: 16) {
-                    Label(dimensions.format(opening.width, unit: unit), systemImage: "arrow.left.and.right")
-                    Label(dimensions.format(opening.height, unit: unit), systemImage: "arrow.up.and.down")
+                    Label(
+                        dimensions.format(opening.width, unit: unit),
+                        systemImage: "arrow.left.and.right")
+                    Label(
+                        dimensions.format(opening.height, unit: unit),
+                        systemImage: "arrow.up.and.down")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

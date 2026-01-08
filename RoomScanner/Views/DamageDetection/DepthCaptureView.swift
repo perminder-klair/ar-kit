@@ -1,6 +1,6 @@
-import SwiftUI
 import ARKit
 import RealityKit
+import SwiftUI
 
 /// View for capturing depth frames with LiDAR after room scanning
 /// User manually captures photos when they see damage
@@ -10,6 +10,7 @@ struct DepthCaptureView: View {
     @State private var showInstructions = true
     @State private var viewController: DepthCaptureARViewController?
     @State private var showCaptureFlash = false
+    @State private var showCancelAlert = false
 
     var body: some View {
         ZStack {
@@ -36,8 +37,23 @@ struct DepthCaptureView: View {
             VStack {
                 // Top status bar
                 captureStatusBar
-                    .padding(.top, 60)
+                    .padding(.top, 30)
                     .padding(.horizontal)
+
+                // Floating cancel button - top right
+                HStack {
+                    Spacer()
+                    Button(action: { showCancelAlert = true }) {
+                        Image(systemName: "xmark")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 50, height: 50)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
 
                 Spacer()
 
@@ -47,8 +63,8 @@ struct DepthCaptureView: View {
                         .transition(.opacity)
                 }
 
-                // Hint text when capturing
-                if !showInstructions {
+                // Hint text when capturing (disappears after first capture)
+                if !showInstructions && capturedCount == 0 {
                     Text("Point at damage, then tap capture")
                         .font(.subheadline)
                         .foregroundColor(.white)
@@ -62,11 +78,19 @@ struct DepthCaptureView: View {
 
                 // Bottom controls
                 bottomControls
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 20)
                     .padding(.horizontal)
             }
         }
         .navigationBarHidden(true)
+        .alert("Cancel Capture?", isPresented: $showCancelAlert) {
+            Button("Continue", role: .cancel) { }
+            Button("Cancel", role: .destructive) {
+                appState.navigateTo(.dimensions)
+            }
+        } message: {
+            Text("Your damage photos will be discarded.")
+        }
         .onAppear {
             // Clear previous frames and start fresh
             appState.frameCaptureService.clearFrames()
@@ -103,7 +127,7 @@ struct DepthCaptureView: View {
     }
 
     private var instructionsOverlay: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Image(systemName: "camera.viewfinder")
                 .font(.system(size: 50))
                 .foregroundColor(.white)
@@ -113,27 +137,31 @@ struct DepthCaptureView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 InstructionItem(icon: "eye", text: "Look for cracks, holes, stains, mold")
                 InstructionItem(icon: "camera", text: "Point camera at damage (1-2m away)")
                 InstructionItem(icon: "hand.tap", text: "Tap capture button for each damage")
             }
-            .padding()
-            .background(Color.black.opacity(0.6))
-            .cornerRadius(12)
 
-            Button("Start") {
+            Button {
                 withAnimation {
                     showInstructions = false
                 }
+            } label: {
+                Text("Start Capturing")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.orange)
+                    .cornerRadius(12)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.blue)
+            .padding(.top, 8)
         }
-        .padding()
+        .padding(24)
         .background(.ultraThinMaterial)
         .cornerRadius(20)
-        .padding(.horizontal, 40)
+        .padding(.horizontal, 20)
     }
 
     private var bottomControls: some View {
@@ -237,7 +265,8 @@ struct DepthCaptureARViewContainer: UIViewControllerRepresentable {
         return controller
     }
 
-    func updateUIViewController(_ uiViewController: DepthCaptureARViewController, context: Context) {
+    func updateUIViewController(_ uiViewController: DepthCaptureARViewController, context: Context)
+    {
         // No longer need to update capturing state - manual capture only
     }
 }
@@ -307,7 +336,8 @@ final class DepthCaptureARViewController: UIViewController {
     /// Called by SwiftUI when user taps capture button
     func captureCurrentFrame() {
         guard let frame = currentFrame,
-              let service = frameCaptureService else {
+            let service = frameCaptureService
+        else {
             print("DepthCaptureARViewController: No frame available to capture")
             return
         }
@@ -320,7 +350,9 @@ final class DepthCaptureARViewController: UIViewController {
             self.onFrameCaptured?()
         }
 
-        print("DepthCaptureARViewController: Manually captured frame \(service.frameCount) with depth")
+        print(
+            "DepthCaptureARViewController: Manually captured frame \(service.frameCount) with depth"
+        )
     }
 }
 

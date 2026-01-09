@@ -4,6 +4,7 @@ import PDFKit
 import UIKit
 import simd
 import SceneKit
+import SceneKit.ModelIO
 import ModelIO
 
 /// Service for exporting room data in various formats
@@ -217,7 +218,7 @@ final class RoomExporter {
         let glbURL = exportDirectory.appendingPathComponent(glbFilename)
 
         // Convert to ModelIO asset and export as GLB
-        let asset = MDLAsset(scnScene: scene)
+        let asset = MDLAsset(scnScene: scene, bufferAllocator: nil)
 
         // GLB export requires the URL to have .glb extension (which it does)
         do {

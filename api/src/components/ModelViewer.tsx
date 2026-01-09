@@ -18,7 +18,6 @@ export function ModelViewer({ glbUrl, usdzUrl, alt = "3D Room Model" }: Props) {
 
   return (
     <div ref={containerRef} className="w-full h-[400px] bg-gray-100 rounded-lg overflow-hidden relative">
-      {/* @ts-ignore - model-viewer is a custom element */}
       <model-viewer
         src={glbUrl}
         ios-src={usdzUrl}

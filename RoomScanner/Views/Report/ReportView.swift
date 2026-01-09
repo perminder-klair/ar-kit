@@ -85,11 +85,6 @@ struct ReportView: View {
             } message: {
                 Text(exportError ?? "")
             }
-            .alert("Saved to Cloud", isPresented: $showSaveSuccess) {
-                Button("OK") { }
-            } message: {
-                Text("Report saved successfully.\nID: \(savedReportId ?? "")")
-            }
             .sheet(isPresented: $showShareSheet) {
                 if let url = exportedFileURL {
                     ShareSheet(items: [url])
@@ -105,6 +100,7 @@ struct ReportView: View {
         .sensoryFeedback(.impact(flexibility: .soft), trigger: exportTapHaptic)
         .sensoryFeedback(.success, trigger: exportSuccessHaptic)
         .sensoryFeedback(.error, trigger: exportErrorHaptic)
+        .toast(isShowing: $showSaveSuccess, message: "Saved to cloud", icon: "checkmark.icloud.fill")
     }
 
     // MARK: - Export Methods
@@ -205,12 +201,22 @@ struct ReportView: View {
 
             do {
                 guard let dims = dimensions else { return }
-                let reportId = try await ReportAPIService.shared.saveReport(
+
+                // Update confidence metrics from dimensions
+                appState.sessionTelemetry.confidence.update(from: dims.walls)
+
+                let (reportId, updatedTelemetry) = try await ReportAPIService.shared.saveReport(
                     userName: appState.userName,
                     dimensions: dims,
-                    damageResult: appState.damageAnalysisResult
+                    damageResult: appState.damageAnalysisResult,
+                    telemetry: appState.sessionTelemetry
                 )
                 savedReportId = reportId
+
+                // Update telemetry with network timing from upload
+                if let t = updatedTelemetry {
+                    appState.sessionTelemetry = t
+                }
 
                 // Upload damage images
                 let frames = appState.frameCaptureService.capturedFrames
@@ -219,6 +225,7 @@ struct ReportView: View {
                         reportId: reportId,
                         frames: frames
                     )
+                    appState.sessionTelemetry.network.fileUploadCount = frames.count
                 }
 
                 // Upload USDZ model
@@ -227,11 +234,13 @@ struct ReportView: View {
                     reportId: reportId,
                     modelURL: modelURL
                 )
+                appState.sessionTelemetry.network.fileUploadCount += 1
 
                 showSaveSuccess = true
                 exportSuccessHaptic.toggle()
             } catch {
                 exportError = error.localizedDescription
+                appState.sessionTelemetry.errors.recordUploadRetry(error: error.localizedDescription)
                 exportErrorHaptic.toggle()
             }
         }

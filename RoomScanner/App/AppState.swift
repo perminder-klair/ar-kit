@@ -18,6 +18,10 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Session Telemetry
+
+    @Published var sessionTelemetry: SessionTelemetry = SessionTelemetry()
+
     // MARK: - Initialization
 
     init() {
@@ -71,17 +75,32 @@ final class AppState: ObservableObject {
     func startNewScan() {
         capturedRoom = nil
         scanError = nil
+        // Reset telemetry for new session
+        sessionTelemetry = SessionTelemetry()
+        sessionTelemetry.timestamps.markScanStarted()
         navigateTo(.scanning)
     }
 
     func completeScan(with room: CapturedRoom) {
         capturedRoom = room
         isScanning = false
+        sessionTelemetry.timestamps.markScanEnded()
+        // Calculate scan duration
+        if let start = sessionTelemetry.timestamps.scanStartedAt,
+           let end = sessionTelemetry.timestamps.scanEndedAt {
+            sessionTelemetry.scanMetrics.durationSeconds = end.timeIntervalSince(start)
+        }
+        // Update scan metrics from completeness check
+        let completeness = roomCaptureService.checkScanCompleteness()
+        sessionTelemetry.scanMetrics.update(from: completeness)
+        sessionTelemetry.scanMetrics.finalState = .completed
         navigateTo(.dimensions)
     }
 
     func cancelScan() {
         isScanning = false
+        sessionTelemetry.timestamps.markScanEnded()
+        sessionTelemetry.scanMetrics.finalState = .cancelled
         navigateTo(.home)
     }
 
@@ -100,6 +119,7 @@ final class AppState: ObservableObject {
             damageAnalysisService.setRoom(room)
         }
         damageAnalysisResult = nil
+        sessionTelemetry.timestamps.markAnalysisStarted()
 
         // Auto-populate images from frame capture if available
         if hasCapturedFrames {
@@ -112,13 +132,23 @@ final class AppState: ObservableObject {
                     surfaceId: image.surfaceId
                 )
             }
+            // Update frame capture metrics
+            sessionTelemetry.frameCapture.update(from: frameCaptureService.capturedFrames)
         }
 
         navigateTo(.damageAnalysis)
     }
 
+    func completeDamageAnalysis(with result: DamageAnalysisResult) {
+        damageAnalysisResult = result
+        sessionTelemetry.timestamps.markAnalysisEnded()
+        // Update confidence metrics from damage results
+        sessionTelemetry.confidence.update(from: result.detectedDamages)
+    }
+
     func cancelDamageAnalysis() {
         damageAnalysisService.reset()
+        sessionTelemetry.timestamps.markAnalysisEnded()
         navigateTo(.dimensions)
     }
 
@@ -141,6 +171,15 @@ final class AppState: ObservableObject {
         damageAnalysisResult = nil
         damageAnalysisService.reset()
         frameCaptureService.reset()
+        sessionTelemetry = SessionTelemetry()
         navigateTo(.home)
+    }
+
+    /// Record a scan error in telemetry
+    func recordScanError(code: String, message: String) {
+        scanError = message
+        sessionTelemetry.errors.addScanError(code: code, message: message)
+        sessionTelemetry.scanMetrics.finalState = .failed
+        sessionTelemetry.scanMetrics.failureReason = message
     }
 }

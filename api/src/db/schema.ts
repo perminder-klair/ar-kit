@@ -6,6 +6,7 @@ import {
   integer,
   text,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -83,12 +84,88 @@ export const damages = pgTable("damages", {
   measurementConfidence: real("measurement_confidence"),
 });
 
+// Session telemetry table - debugging and analytics data
+export const sessionTelemetry = pgTable("session_telemetry", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reportId: uuid("report_id")
+    .notNull()
+    .references(() => reports.id, { onDelete: "cascade" }),
+  sessionId: uuid("session_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // Device info
+  deviceModel: text("device_model").notNull(),
+  systemVersion: text("system_version").notNull(),
+  appVersion: text("app_version").notNull(),
+  buildNumber: text("build_number").notNull(),
+  hasLidar: boolean("has_lidar").notNull(),
+  processorCount: integer("processor_count"),
+  physicalMemoryGb: real("physical_memory_gb"),
+
+  // State timestamps
+  sessionStartedAt: timestamp("session_started_at").notNull(),
+  scanStartedAt: timestamp("scan_started_at"),
+  scanEndedAt: timestamp("scan_ended_at"),
+  processingStartedAt: timestamp("processing_started_at"),
+  processingEndedAt: timestamp("processing_ended_at"),
+  analysisStartedAt: timestamp("analysis_started_at"),
+  analysisEndedAt: timestamp("analysis_ended_at"),
+  uploadStartedAt: timestamp("upload_started_at"),
+  uploadEndedAt: timestamp("upload_ended_at"),
+
+  // Scan metrics
+  scanDurationSeconds: real("scan_duration_seconds"),
+  processingDurationSeconds: real("processing_duration_seconds"),
+  scanIsComplete: boolean("scan_is_complete"),
+  scanWallCount: integer("scan_wall_count"),
+  scanHasFloor: boolean("scan_has_floor"),
+  scanWarnings: jsonb("scan_warnings").$type<string[]>(),
+  scanFinalState: text("scan_final_state"),
+  scanFailureReason: text("scan_failure_reason"),
+
+  // Frame capture metrics
+  frameTotalCount: integer("frame_total_count"),
+  framesWithDepth: integer("frames_with_depth"),
+  framesWithoutDepth: integer("frames_without_depth"),
+  frameWallCount: integer("frame_wall_count"),
+  frameFloorCount: integer("frame_floor_count"),
+  frameCeilingCount: integer("frame_ceiling_count"),
+  avgImageSizeBytes: integer("avg_image_size_bytes"),
+  captureStartedAt: timestamp("capture_started_at"),
+  captureEndedAt: timestamp("capture_ended_at"),
+
+  // Confidence metrics
+  wallConfidenceHigh: integer("wall_confidence_high"),
+  wallConfidenceMedium: integer("wall_confidence_medium"),
+  wallConfidenceLow: integer("wall_confidence_low"),
+  avgDamageConfidence: real("avg_damage_confidence"),
+  avgMeasurementConfidence: real("avg_measurement_confidence"),
+
+  // Error context (JSONB for flexibility)
+  scanErrors: jsonb("scan_errors").$type<
+    Array<{ code: string; message: string; timestamp: string }>
+  >(),
+  analysisErrors: jsonb("analysis_errors").$type<
+    Array<{ code: string; message: string; imageIndex?: number; timestamp: string }>
+  >(),
+  uploadRetryCount: integer("upload_retry_count").default(0),
+  lastUploadError: text("last_upload_error"),
+
+  // Network timing
+  reportUploadDurationMs: integer("report_upload_duration_ms"),
+  reportPayloadSizeBytes: integer("report_payload_size_bytes"),
+  fileUploadDurationMs: integer("file_upload_duration_ms"),
+  totalFilesSizeBytes: integer("total_files_size_bytes"),
+  fileUploadCount: integer("file_upload_count"),
+});
+
 // Relations
-export const reportsRelations = relations(reports, ({ many }) => ({
+export const reportsRelations = relations(reports, ({ many, one }) => ({
   walls: many(walls),
   openings: many(openings),
   damages: many(damages),
   files: many(reportFiles),
+  telemetry: one(sessionTelemetry),
 }));
 
 export const reportFilesRelations = relations(reportFiles, ({ one }) => ({
@@ -119,6 +196,13 @@ export const damagesRelations = relations(damages, ({ one }) => ({
   }),
 }));
 
+export const sessionTelemetryRelations = relations(sessionTelemetry, ({ one }) => ({
+  report: one(reports, {
+    fields: [sessionTelemetry.reportId],
+    references: [reports.id],
+  }),
+}));
+
 // Types
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
@@ -130,3 +214,5 @@ export type Damage = typeof damages.$inferSelect;
 export type NewDamage = typeof damages.$inferInsert;
 export type ReportFile = typeof reportFiles.$inferSelect;
 export type NewReportFile = typeof reportFiles.$inferInsert;
+export type SessionTelemetryRecord = typeof sessionTelemetry.$inferSelect;
+export type NewSessionTelemetryRecord = typeof sessionTelemetry.$inferInsert;

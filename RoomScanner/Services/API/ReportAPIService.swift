@@ -17,6 +17,7 @@ struct ReportPayload: Codable {
     let doors: [OpeningPayload]
     let windows: [OpeningPayload]
     let damages: [DamagePayload]
+    let telemetry: SessionTelemetry?
 }
 
 struct WallPayload: Codable {
@@ -109,14 +110,39 @@ actor ReportAPIService {
     ///   - userName: Name of the person who performed the scan
     ///   - dimensions: Room dimensions from the scan
     ///   - damageResult: Optional damage analysis result
-    /// - Returns: The created report ID
+    ///   - telemetry: Optional session telemetry for debugging
+    /// - Returns: The created report ID and updated telemetry with network timing
     func saveReport(
         userName: String,
         dimensions: CapturedRoomProcessor.RoomDimensions,
-        damageResult: DamageAnalysisResult?
-    ) async throws -> String {
-        let payload = buildPayload(userName: userName, dimensions: dimensions, damageResult: damageResult)
-        return try await postReport(payload: payload)
+        damageResult: DamageAnalysisResult?,
+        telemetry: SessionTelemetry?
+    ) async throws -> (reportId: String, telemetry: SessionTelemetry?) {
+        var mutableTelemetry = telemetry
+        mutableTelemetry?.timestamps.markUploadStarted()
+
+        let payload = buildPayload(
+            userName: userName,
+            dimensions: dimensions,
+            damageResult: damageResult,
+            telemetry: mutableTelemetry
+        )
+
+        let startTime = Date()
+        let reportId = try await postReport(payload: payload)
+
+        // Update telemetry with network timing
+        if var t = mutableTelemetry {
+            t.timestamps.markUploadEnded()
+            let durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
+            t.network.reportUploadDurationMs = durationMs
+            if let payloadData = try? encoder.encode(payload) {
+                t.network.reportPayloadSizeBytes = payloadData.count
+            }
+            mutableTelemetry = t
+        }
+
+        return (reportId, mutableTelemetry)
     }
 
     /// Upload a file to the report
@@ -208,7 +234,8 @@ actor ReportAPIService {
     private func buildPayload(
         userName: String,
         dimensions: CapturedRoomProcessor.RoomDimensions,
-        damageResult: DamageAnalysisResult?
+        damageResult: DamageAnalysisResult?,
+        telemetry: SessionTelemetry?
     ) -> ReportPayload {
         // Build wall payloads
         let walls = dimensions.walls.map { wall in
@@ -283,7 +310,8 @@ actor ReportAPIService {
             walls: walls,
             doors: doors,
             windows: windows,
-            damages: damages
+            damages: damages,
+            telemetry: telemetry
         )
     }
 

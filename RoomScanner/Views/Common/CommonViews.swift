@@ -125,6 +125,46 @@ extension View {
     }
 }
 
+/// Toast overlay modifier for non-blocking notifications
+struct ToastOverlay: ViewModifier {
+    @Binding var isShowing: Bool
+    let message: String
+    let icon: String
+    let duration: Double
+
+    func body(content: Content) -> some View {
+        ZStack(alignment: .bottom) {
+            content
+
+            if isShowing {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                    Text(message)
+                        .font(.subheadline)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.ultraThinMaterial)
+                .cornerRadius(20)
+                .padding(.bottom, 32)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                        withAnimation { isShowing = false }
+                    }
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: isShowing)
+    }
+}
+
+extension View {
+    func toast(isShowing: Binding<Bool>, message: String, icon: String = "checkmark.circle.fill", duration: Double = 2.0) -> some View {
+        modifier(ToastOverlay(isShowing: isShowing, message: message, icon: icon, duration: duration))
+    }
+}
+
 #Preview("Processing") {
     ProcessingView()
         .environmentObject(AppState())

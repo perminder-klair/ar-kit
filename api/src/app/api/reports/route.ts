@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { reports, walls, openings, damages } from "@/db/schema";
+import { reports, walls, openings, damages, sessionTelemetry } from "@/db/schema";
 import { createReportSchema } from "@/schemas/report";
 import { desc } from "drizzle-orm";
 
@@ -114,6 +114,76 @@ export async function POST(request: NextRequest) {
           measurementConfidence: damage.measurementConfidence,
         }))
       );
+    }
+
+    // Insert session telemetry if provided
+    if (data.telemetry) {
+      const t = data.telemetry;
+      await db.insert(sessionTelemetry).values({
+        reportId: newReport.id,
+        sessionId: t.sessionId,
+
+        // Device info
+        deviceModel: t.device.model,
+        systemVersion: t.device.systemVersion,
+        appVersion: t.device.appVersion,
+        buildNumber: t.device.buildNumber,
+        hasLidar: t.device.hasLiDAR,
+        processorCount: t.device.processorCount,
+        physicalMemoryGb: t.device.physicalMemoryGB,
+
+        // State timestamps
+        sessionStartedAt: new Date(t.timestamps.sessionStartedAt),
+        scanStartedAt: t.timestamps.scanStartedAt ? new Date(t.timestamps.scanStartedAt) : null,
+        scanEndedAt: t.timestamps.scanEndedAt ? new Date(t.timestamps.scanEndedAt) : null,
+        processingStartedAt: t.timestamps.processingStartedAt ? new Date(t.timestamps.processingStartedAt) : null,
+        processingEndedAt: t.timestamps.processingEndedAt ? new Date(t.timestamps.processingEndedAt) : null,
+        analysisStartedAt: t.timestamps.analysisStartedAt ? new Date(t.timestamps.analysisStartedAt) : null,
+        analysisEndedAt: t.timestamps.analysisEndedAt ? new Date(t.timestamps.analysisEndedAt) : null,
+        uploadStartedAt: t.timestamps.uploadStartedAt ? new Date(t.timestamps.uploadStartedAt) : null,
+        uploadEndedAt: t.timestamps.uploadEndedAt ? new Date(t.timestamps.uploadEndedAt) : null,
+
+        // Scan metrics
+        scanDurationSeconds: t.scanMetrics.durationSeconds,
+        processingDurationSeconds: t.scanMetrics.processingDurationSeconds,
+        scanIsComplete: t.scanMetrics.isComplete,
+        scanWallCount: t.scanMetrics.wallCount,
+        scanHasFloor: t.scanMetrics.hasFloor,
+        scanWarnings: t.scanMetrics.warnings,
+        scanFinalState: t.scanMetrics.finalState,
+        scanFailureReason: t.scanMetrics.failureReason,
+
+        // Frame capture metrics
+        frameTotalCount: t.frameCapture.totalFrames,
+        framesWithDepth: t.frameCapture.framesWithDepth,
+        framesWithoutDepth: t.frameCapture.framesWithoutDepth,
+        frameWallCount: t.frameCapture.surfaceDistribution.wall,
+        frameFloorCount: t.frameCapture.surfaceDistribution.floor,
+        frameCeilingCount: t.frameCapture.surfaceDistribution.ceiling,
+        avgImageSizeBytes: t.frameCapture.avgImageSizeBytes,
+        captureStartedAt: t.frameCapture.captureStartedAt ? new Date(t.frameCapture.captureStartedAt) : null,
+        captureEndedAt: t.frameCapture.captureEndedAt ? new Date(t.frameCapture.captureEndedAt) : null,
+
+        // Confidence metrics
+        wallConfidenceHigh: t.confidence.wallConfidenceDistribution.high,
+        wallConfidenceMedium: t.confidence.wallConfidenceDistribution.medium,
+        wallConfidenceLow: t.confidence.wallConfidenceDistribution.low,
+        avgDamageConfidence: t.confidence.avgDamageConfidence,
+        avgMeasurementConfidence: t.confidence.avgMeasurementConfidence,
+
+        // Error context
+        scanErrors: t.errors.scanErrors,
+        analysisErrors: t.errors.analysisErrors,
+        uploadRetryCount: t.errors.uploadRetryCount,
+        lastUploadError: t.errors.lastUploadError,
+
+        // Network timing
+        reportUploadDurationMs: t.network.reportUploadDurationMs,
+        reportPayloadSizeBytes: t.network.reportPayloadSizeBytes,
+        fileUploadDurationMs: t.network.fileUploadDurationMs,
+        totalFilesSizeBytes: t.network.totalFilesSizeBytes,
+        fileUploadCount: t.network.fileUploadCount,
+      });
     }
 
     // Fetch complete report with relations

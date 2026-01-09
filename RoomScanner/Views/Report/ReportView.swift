@@ -257,21 +257,6 @@ struct ReportView: View {
                 )
                 appState.sessionTelemetry.network.fileUploadCount += 1
 
-                // Upload GLB model for web 3D viewer
-                do {
-                    let glbURL = try await exporter.exportGLB(capturedRoom: capturedRoom)
-                    try await ReportAPIService.shared.uploadFile(
-                        reportId: reportId,
-                        data: try Data(contentsOf: glbURL),
-                        fileName: glbURL.lastPathComponent,
-                        fileType: "model_glb"
-                    )
-                    appState.sessionTelemetry.network.fileUploadCount += 1
-                } catch {
-                    // GLB export is optional - log but don't fail the save
-                    print("GLB export failed (non-critical): \(error.localizedDescription)")
-                }
-
                 showSaveSuccess = true
                 exportSuccessHaptic.toggle()
             } catch {

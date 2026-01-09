@@ -5,7 +5,6 @@ import { StatsGrid } from "@/components/StatsGrid";
 import { DamageList } from "@/components/DamageList";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ExportButton } from "@/components/ExportButton";
-import { ModelViewer } from "@/components/ModelViewer";
 
 type Params = Promise<{ id: string }>;
 
@@ -37,7 +36,6 @@ export default async function ReportDetailPage({
 
   const damageImages = report?.files.filter((f) => f.fileType === "damage_image") || [];
   const usdzFiles = report?.files.filter((f) => f.fileType === "model_usdz") || [];
-  const glbFiles = report?.files.filter((f) => f.fileType === "model_glb") || [];
 
   if (!report) {
     notFound();
@@ -133,50 +131,44 @@ export default async function ReportDetailPage({
         </div>
 
         {/* 3D Model */}
-        {(glbFiles.length > 0 || usdzFiles.length > 0) && (
+        {usdzFiles.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">3D Room Model</h2>
 
-            {glbFiles.length > 0 ? (
-              <ModelViewer
-                glbUrl={glbFiles[0].blobUrl}
-                usdzUrl={usdzFiles[0]?.blobUrl}
-              />
-            ) : (
-              <div className="bg-gray-100 rounded-lg p-8 text-center">
-                <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <p className="text-gray-500 mb-2">Interactive 3D preview not available</p>
-                <p className="text-sm text-gray-400">GLB model format required for web display</p>
-              </div>
-            )}
+            <div className="bg-gray-100 rounded-lg p-8 text-center">
+              <svg className="w-16 h-16 mx-auto text-purple-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
 
-            <div className="mt-4 flex gap-4">
-              {usdzFiles[0] && (
-                <a
-                  href={usdzFiles[0].blobUrl}
-                  download={usdzFiles[0].fileName}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download USDZ (iOS AR)
-                </a>
-              )}
-              {glbFiles[0] && (
-                <a
-                  href={glbFiles[0].blobUrl}
-                  download={glbFiles[0].fileName}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download GLB
-                </a>
-              )}
+              {/* AR Quick Look link - works on iOS Safari */}
+              <a
+                rel="ar"
+                href={usdzFiles[0].blobUrl}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                View in AR
+              </a>
+
+              <p className="mt-4 text-sm text-gray-500">
+                AR preview available on iOS Safari
+              </p>
+            </div>
+
+            <div className="mt-4">
+              <a
+                href={usdzFiles[0].blobUrl}
+                download={usdzFiles[0].fileName}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download USDZ Model
+              </a>
             </div>
           </div>
         )}

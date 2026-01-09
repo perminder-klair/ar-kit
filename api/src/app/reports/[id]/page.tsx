@@ -30,6 +30,7 @@ export default async function ReportDetailPage({
       openings: true,
       damages: true,
       files: true,
+      telemetry: true,
     },
   });
 
@@ -188,13 +189,201 @@ export default async function ReportDetailPage({
         </div>
 
         {/* Damage Analysis */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">
             Damage Analysis ({report.damages.length} Issue
             {report.damages.length !== 1 ? "s" : ""})
           </h2>
           <DamageList damages={report.damages} />
         </div>
+
+        {/* Debug Info / Telemetry */}
+        {report.telemetry && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">Debug Info</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Device Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-700 mb-3">Device</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Model</span>
+                    <span className="font-mono">{report.telemetry.deviceModel}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">iOS Version</span>
+                    <span>{report.telemetry.systemVersion}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">App Version</span>
+                    <span>{report.telemetry.appVersion} ({report.telemetry.buildNumber})</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">LiDAR</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      report.telemetry.hasLidar
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {report.telemetry.hasLidar ? "Available" : "Not Available"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timing */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-700 mb-3">Timing</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Scan Duration</span>
+                    <span>{report.telemetry.scanDurationSeconds?.toFixed(1) ?? "-"}s</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Processing</span>
+                    <span>{report.telemetry.processingDurationSeconds?.toFixed(1) ?? "-"}s</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Upload</span>
+                    <span>{report.telemetry.reportUploadDurationMs ? `${report.telemetry.reportUploadDurationMs}ms` : "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Payload Size</span>
+                    <span>{report.telemetry.reportPayloadSizeBytes ? `${(report.telemetry.reportPayloadSizeBytes / 1024).toFixed(1)} KB` : "-"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quality Metrics */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-700 mb-3">Scan Quality</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Completeness</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      report.telemetry.scanIsComplete
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}>
+                      {report.telemetry.scanIsComplete ? "Complete" : "Incomplete"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Status</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      report.telemetry.scanFinalState === "completed"
+                        ? "bg-green-100 text-green-800"
+                        : report.telemetry.scanFinalState === "cancelled"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                    }`}>
+                      {report.telemetry.scanFinalState ?? "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Wall Confidence</span>
+                    <span className="text-xs">
+                      <span className="text-green-600">{report.telemetry.wallConfidenceHigh ?? 0} high</span>
+                      {" / "}
+                      <span className="text-yellow-600">{report.telemetry.wallConfidenceMedium ?? 0} med</span>
+                      {" / "}
+                      <span className="text-red-600">{report.telemetry.wallConfidenceLow ?? 0} low</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Has Floor</span>
+                    <span>{report.telemetry.scanHasFloor ? "Yes" : "No"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Frame Capture */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-700 mb-3">Frame Capture</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Total Frames</span>
+                    <span>{report.telemetry.frameTotalCount ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">With Depth</span>
+                    <span className="text-green-600">{report.telemetry.framesWithDepth ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Without Depth</span>
+                    <span className="text-gray-600">{report.telemetry.framesWithoutDepth ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Surfaces</span>
+                    <span className="text-xs">
+                      {report.telemetry.frameWallCount ?? 0} wall / {report.telemetry.frameFloorCount ?? 0} floor / {report.telemetry.frameCeilingCount ?? 0} ceiling
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Errors (if any) */}
+              {((report.telemetry.scanErrors as unknown[])?.length > 0 ||
+                (report.telemetry.analysisErrors as unknown[])?.length > 0 ||
+                (report.telemetry.uploadRetryCount ?? 0) > 0) && (
+                <div className="bg-red-50 rounded-lg p-4 md:col-span-2">
+                  <h3 className="font-medium text-red-700 mb-3">Errors</h3>
+                  <div className="space-y-2 text-sm">
+                    {(report.telemetry.scanErrors as Array<{code: string; message: string}>)?.length > 0 && (
+                      <div>
+                        <span className="text-red-600 font-medium">Scan Errors:</span>
+                        <ul className="list-disc list-inside text-red-700 mt-1">
+                          {(report.telemetry.scanErrors as Array<{code: string; message: string}>).map((err, i) => (
+                            <li key={i}>{err.code}: {err.message}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(report.telemetry.analysisErrors as Array<{code: string; message: string}>)?.length > 0 && (
+                      <div>
+                        <span className="text-red-600 font-medium">Analysis Errors:</span>
+                        <ul className="list-disc list-inside text-red-700 mt-1">
+                          {(report.telemetry.analysisErrors as Array<{code: string; message: string}>).map((err, i) => (
+                            <li key={i}>{err.code}: {err.message}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(report.telemetry.uploadRetryCount ?? 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-red-600">Upload Retries</span>
+                        <span>{report.telemetry.uploadRetryCount}</span>
+                      </div>
+                    )}
+                    {report.telemetry.lastUploadError && (
+                      <div>
+                        <span className="text-red-600 font-medium">Last Upload Error:</span>
+                        <p className="text-red-700 mt-1">{report.telemetry.lastUploadError}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Warnings (if any) */}
+              {(report.telemetry.scanWarnings as string[])?.length > 0 && (
+                <div className="bg-yellow-50 rounded-lg p-4 md:col-span-2">
+                  <h3 className="font-medium text-yellow-700 mb-3">Warnings</h3>
+                  <ul className="list-disc list-inside text-sm text-yellow-700">
+                    {(report.telemetry.scanWarnings as string[]).map((warning, i) => (
+                      <li key={i}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Session ID */}
+            <div className="mt-4 pt-4 border-t text-xs text-gray-400">
+              Session ID: {report.telemetry.sessionId}
+            </div>
+          </div>
+        )}
 
         {/* Metadata */}
         <div className="mt-6 text-center text-sm text-gray-400">

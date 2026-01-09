@@ -37,6 +37,7 @@
 		7E6C1D302F0C0290000AE92A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E6C1D2F2F0C0290000AE92A /* Assets.xcassets */; };
 		9C7AD05108F79C854C9AC609 /* ReportAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A3841DB724467371E92CE3 /* ReportAPIService.swift */; };
 		E7472A6CD9D887F5475A0444 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0F8AAF84B2EB924D375027 /* APIConfig.swift */; };
+		A1B2C3D4E5F6789012345678 /* SessionTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345679AB /* SessionTelemetry.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +73,7 @@
 		7E6C1D282F0C0288000AE92A /* DamagePositionCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamagePositionCalculator.swift; sourceTree = "<group>"; };
 		7E6C1D2F2F0C0290000AE92A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7EA7734F2F0BE7FA00907D2C /* FixzyRoomScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FixzyRoomScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B2C3D4E5F6789012345679AB /* SessionTelemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTelemetry.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +110,7 @@
 			children = (
 				7E6C1C952F0C0282000AE92A /* RoomModel.swift */,
 				7E6C1D032F0C0283000AE92A /* DamageModel.swift */,
+				B2C3D4E5F6789012345679AB /* SessionTelemetry.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -360,6 +363,7 @@
 				7E6C1D252F0C0287000AE92A /* RoomModelViewer.swift in Sources */,
 				E7472A6CD9D887F5475A0444 /* APIConfig.swift in Sources */,
 				9C7AD05108F79C854C9AC609 /* ReportAPIService.swift in Sources */,
+				A1B2C3D4E5F6789012345678 /* SessionTelemetry.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -173,7 +173,10 @@ export async function POST(request: NextRequest) {
 
         // Error context
         scanErrors: t.errors.scanErrors,
-        analysisErrors: t.errors.analysisErrors,
+        analysisErrors: t.errors.analysisErrors?.map((e) => ({
+          ...e,
+          imageIndex: e.imageIndex ?? undefined,
+        })),
         uploadRetryCount: t.errors.uploadRetryCount,
         lastUploadError: t.errors.lastUploadError,
 

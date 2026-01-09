@@ -6,6 +6,24 @@ import Combine
 @MainActor
 final class AppState: ObservableObject {
 
+    // MARK: - UserDefaults Keys
+
+    private static let userNameKey = "userName"
+
+    // MARK: - User Info
+
+    @Published var userName: String = "" {
+        didSet {
+            UserDefaults.standard.set(userName, forKey: Self.userNameKey)
+        }
+    }
+
+    // MARK: - Initialization
+
+    init() {
+        userName = UserDefaults.standard.string(forKey: Self.userNameKey) ?? ""
+    }
+
     // MARK: - Navigation
 
     enum Screen: Equatable {

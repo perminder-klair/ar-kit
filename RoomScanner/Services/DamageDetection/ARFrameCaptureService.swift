@@ -110,7 +110,8 @@ final class ARFrameCaptureService: ObservableObject {
             return
         }
 
-        let image = UIImage(cgImage: cgImage)
+        let orientation = currentImageOrientation()
+        let image = UIImage(cgImage: cgImage, scale: 1.0, orientation: orientation)
         let resized = resizeIfNeeded(image)
 
         guard let imageData = resized.jpegData(compressionQuality: imageCompression) else {
@@ -283,6 +284,21 @@ final class ARFrameCaptureService: ObservableObject {
     }
 
     // MARK: - Private Methods
+
+    private func currentImageOrientation() -> UIImage.Orientation {
+        switch UIDevice.current.orientation {
+        case .portrait:
+            return .right
+        case .portraitUpsideDown:
+            return .left
+        case .landscapeLeft:
+            return .up
+        case .landscapeRight:
+            return .down
+        default:
+            return .right  // Default to portrait
+        }
+    }
 
     private func resizeIfNeeded(_ image: UIImage) -> UIImage {
         let size = image.size

@@ -35,6 +35,7 @@ export const damageSchema = z.object({
 
 // Full report creation schema
 export const createReportSchema = z.object({
+  userName: z.string().min(1),
   scanDate: z.string().datetime(),
   floorAreaM2: z.number(),
   wallAreaM2: z.number(),

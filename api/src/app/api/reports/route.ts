@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     const [newReport] = await db
       .insert(reports)
       .values({
+        userName: data.userName,
         scanDate: new Date(data.scanDate),
         floorAreaM2: data.floorAreaM2,
         wallAreaM2: data.wallAreaM2,

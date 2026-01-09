@@ -33,8 +33,7 @@ struct ReportView: View {
                         onExportUSDZ: exportUSDZ,
                         onExportJSON: exportJSON,
                         onExportPDF: exportPDF,
-                        onExportThreeJS: exportThreeJS,
-                        onSaveToCloud: saveToCloud
+                        onExportThreeJS: exportThreeJS
                     )
 
                     // Damage Analysis Summary (if available)
@@ -99,6 +98,9 @@ struct ReportView: View {
         }
         .onAppear {
             dimensions = processor.extractDimensions(from: capturedRoom)
+            if dimensions != nil {
+                saveToCloud()
+            }
         }
         .sensoryFeedback(.impact(flexibility: .soft), trigger: exportTapHaptic)
         .sensoryFeedback(.success, trigger: exportSuccessHaptic)
@@ -204,10 +206,28 @@ struct ReportView: View {
             do {
                 guard let dims = dimensions else { return }
                 let reportId = try await ReportAPIService.shared.saveReport(
+                    userName: appState.userName,
                     dimensions: dims,
                     damageResult: appState.damageAnalysisResult
                 )
                 savedReportId = reportId
+
+                // Upload damage images
+                let frames = appState.frameCaptureService.capturedFrames
+                if !frames.isEmpty {
+                    try await ReportAPIService.shared.uploadDamageImages(
+                        reportId: reportId,
+                        frames: frames
+                    )
+                }
+
+                // Upload USDZ model
+                let modelURL = try await exporter.exportUSDZ(capturedRoom: capturedRoom)
+                try await ReportAPIService.shared.uploadModel(
+                    reportId: reportId,
+                    modelURL: modelURL
+                )
+
                 showSaveSuccess = true
                 exportSuccessHaptic.toggle()
             } catch {
@@ -281,7 +301,6 @@ struct ExportOptionsSection: View {
     let onExportJSON: () -> Void
     let onExportPDF: () -> Void
     let onExportThreeJS: () -> Void
-    let onSaveToCloud: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -289,14 +308,6 @@ struct ExportOptionsSection: View {
                 .font(.headline)
 
             VStack(spacing: 12) {
-                ExportButton(
-                    icon: "icloud.and.arrow.up",
-                    title: "Save to Cloud",
-                    description: "Store report in database",
-                    color: .green,
-                    action: onSaveToCloud
-                )
-
                 ExportButton(
                     icon: "cube",
                     title: "3D Model (USDZ)",

@@ -3,6 +3,7 @@ import Foundation
 // MARK: - Payload Structures
 
 struct ReportPayload: Codable {
+    let userName: String
     let scanDate: String  // ISO8601
     let floorAreaM2: Float
     let wallAreaM2: Float
@@ -56,6 +57,12 @@ struct ReportResponse: Codable {
     let scanDate: String
 }
 
+struct FileUploadResponse: Codable {
+    let id: String
+    let blobUrl: String
+    let fileName: String
+}
+
 // MARK: - API Errors
 
 enum ReportAPIError: LocalizedError {
@@ -99,20 +106,107 @@ actor ReportAPIService {
 
     /// Save a report to the cloud
     /// - Parameters:
+    ///   - userName: Name of the person who performed the scan
     ///   - dimensions: Room dimensions from the scan
     ///   - damageResult: Optional damage analysis result
     /// - Returns: The created report ID
     func saveReport(
+        userName: String,
         dimensions: CapturedRoomProcessor.RoomDimensions,
         damageResult: DamageAnalysisResult?
     ) async throws -> String {
-        let payload = buildPayload(dimensions: dimensions, damageResult: damageResult)
+        let payload = buildPayload(userName: userName, dimensions: dimensions, damageResult: damageResult)
         return try await postReport(payload: payload)
+    }
+
+    /// Upload a file to the report
+    /// - Parameters:
+    ///   - reportId: The report ID to attach the file to
+    ///   - data: The file data
+    ///   - fileName: The name of the file
+    ///   - fileType: Either "damage_image" or "model_usdz"
+    func uploadFile(
+        reportId: String,
+        data: Data,
+        fileName: String,
+        fileType: String
+    ) async throws {
+        guard let url = URL(string: "\(APIConfig.baseURL)/api/reports/\(reportId)/upload") else {
+            throw ReportAPIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+
+        // Add fileType field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"fileType\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(fileType)\r\n".data(using: .utf8)!)
+
+        // Add file field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+
+        let mimeType = fileType == "model_usdz" ? "model/vnd.usdz+zip" : "image/jpeg"
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n".data(using: .utf8)!)
+
+        // End boundary
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        request.httpBody = body
+
+        let (_, response): (Data, URLResponse)
+        do {
+            (_, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw ReportAPIError.networkError(error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ReportAPIError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ReportAPIError.serverError(httpResponse.statusCode, "File upload failed")
+        }
+    }
+
+    /// Upload damage images from captured frames
+    func uploadDamageImages(reportId: String, frames: [CapturedFrame]) async throws {
+        for (index, frame) in frames.enumerated() {
+            let fileName = "damage_\(index + 1).jpg"
+            try await uploadFile(
+                reportId: reportId,
+                data: frame.imageData,
+                fileName: fileName,
+                fileType: "damage_image"
+            )
+        }
+    }
+
+    /// Upload USDZ model file
+    func uploadModel(reportId: String, modelURL: URL) async throws {
+        let data = try Data(contentsOf: modelURL)
+        let fileName = modelURL.lastPathComponent
+        try await uploadFile(
+            reportId: reportId,
+            data: data,
+            fileName: fileName,
+            fileType: "model_usdz"
+        )
     }
 
     // MARK: - Private Methods
 
     private func buildPayload(
+        userName: String,
         dimensions: CapturedRoomProcessor.RoomDimensions,
         damageResult: DamageAnalysisResult?
     ) -> ReportPayload {
@@ -176,6 +270,7 @@ actor ReportAPIService {
         let scanDateString = dateFormatter.string(from: Date())
 
         return ReportPayload(
+            userName: userName,
             scanDate: scanDateString,
             floorAreaM2: dimensions.totalFloorArea,
             wallAreaM2: dimensions.totalWallArea,

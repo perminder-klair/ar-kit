@@ -6,6 +6,10 @@ struct HomeView: View {
     @EnvironmentObject var appState: AppState
     @State private var showDeviceAlert = false
 
+    private var isNameValid: Bool {
+        !appState.userName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
@@ -37,6 +41,18 @@ struct HomeView: View {
             }
             .padding(.horizontal, 40)
 
+            // Name Input
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Your Name")
+                    .font(.subheadline.bold())
+                TextField("Enter your name", text: $appState.userName)
+                    .textFieldStyle(.plain)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 32)
+
             Spacer()
 
             // Main Action Button
@@ -51,10 +67,11 @@ struct HomeView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(.blue)
+                    .background(isNameValid ? .blue : .gray)
                     .foregroundColor(.white)
                     .cornerRadius(16)
             }
+            .disabled(!isNameValid)
             .padding(.horizontal, 32)
 
             // Device Requirements

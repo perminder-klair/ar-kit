@@ -403,6 +403,16 @@ final class DepthCaptureARViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         stopSession()
+
+        // Clear references to prevent stale state
+        currentFrame = nil
+        arView.session.delegate = nil
+    }
+
+    deinit {
+        arView?.session.pause()
+        arView?.session.delegate = nil
+        arView?.removeFromSuperview()
     }
 
     private func setupARView() {
@@ -434,10 +444,16 @@ final class DepthCaptureARViewController: UIViewController {
 
     private func stopSession() {
         guard isSessionRunning else { return }
+
+        // Reset tracking to ensure clean state when view reappears
+        // Using pause() alone keeps cached tracking state
+        let config = ARWorldTrackingConfiguration()
+        arView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
         arView.session.pause()
+
         isSessionRunning = false
         frameCaptureService?.stopCapturing()
-        print("DepthCaptureARViewController: ARSession stopped")
+        print("DepthCaptureARViewController: ARSession stopped with tracking reset")
     }
 
     /// Called by SwiftUI when user taps capture button

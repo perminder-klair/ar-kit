@@ -13,6 +13,7 @@ import { relations } from "drizzle-orm";
 export const reports = pgTable("reports", {
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  userName: text("user_name").notNull().default("Unknown"),
   scanDate: timestamp("scan_date").notNull(),
   floorAreaM2: real("floor_area_m2").notNull(),
   wallAreaM2: real("wall_area_m2").notNull(),
@@ -49,6 +50,19 @@ export const openings = pgTable("openings", {
   areaM2: real("area_m2").notNull(),
 });
 
+// Report files table - uploaded images and 3D models
+export const reportFiles = pgTable("report_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reportId: uuid("report_id")
+    .notNull()
+    .references(() => reports.id, { onDelete: "cascade" }),
+  fileType: text("file_type").notNull(), // "damage_image" | "model_usdz"
+  fileName: text("file_name").notNull(),
+  blobUrl: text("blob_url").notNull(),
+  size: integer("size").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Damages table - detected damage items
 export const damages = pgTable("damages", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -74,6 +88,14 @@ export const reportsRelations = relations(reports, ({ many }) => ({
   walls: many(walls),
   openings: many(openings),
   damages: many(damages),
+  files: many(reportFiles),
+}));
+
+export const reportFilesRelations = relations(reportFiles, ({ one }) => ({
+  report: one(reports, {
+    fields: [reportFiles.reportId],
+    references: [reports.id],
+  }),
 }));
 
 export const wallsRelations = relations(walls, ({ one }) => ({
@@ -106,3 +128,5 @@ export type Opening = typeof openings.$inferSelect;
 export type NewOpening = typeof openings.$inferInsert;
 export type Damage = typeof damages.$inferSelect;
 export type NewDamage = typeof damages.$inferInsert;
+export type ReportFile = typeof reportFiles.$inferSelect;
+export type NewReportFile = typeof reportFiles.$inferInsert;

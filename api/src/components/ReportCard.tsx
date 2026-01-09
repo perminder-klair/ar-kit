@@ -45,7 +45,7 @@ export function ReportCard({ report }: ReportCardProps) {
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-sm text-gray-500">Scanned</p>
+            <p className="text-sm text-gray-500">Scanned by {report.userName}</p>
             <p className="font-medium">{formatDate(report.scanDate)}</p>
           </div>
           {report.overallCondition && (

@@ -6,6 +6,11 @@ struct DamageDetailView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
 
+    // Edit mode state
+    @State private var isEditing = false
+    @State private var editWidthCm: String = ""
+    @State private var editHeightCm: String = ""
+
     private var damageImage: UIImage? {
         let frames = appState.frameCaptureService.capturedFrames
         guard damage.imageIndex < frames.count else { return nil }
@@ -33,8 +38,8 @@ struct DamageDetailView: View {
                     recommendationSection(recommendation)
                 }
 
-                // Size measurements (if available)
-                if damage.hasMeasurements {
+                // Size measurements (if available or editing)
+                if damage.hasMeasurements || isEditing {
                     measurementsSection
                 }
 
@@ -45,6 +50,62 @@ struct DamageDetailView: View {
         }
         .navigationTitle("Damage Details")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if isEditing {
+                    Button("Save") {
+                        saveEdits()
+                    }
+                } else {
+                    Button("Edit") {
+                        startEditing()
+                    }
+                }
+            }
+            if isEditing {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        cancelEditing()
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Editing Actions
+
+    private func startEditing() {
+        // Initialize edit fields with current values (converted to cm)
+        if let width = damage.realWidth {
+            editWidthCm = String(format: "%.1f", width * 100)
+        } else {
+            editWidthCm = ""
+        }
+        if let height = damage.realHeight {
+            editHeightCm = String(format: "%.1f", height * 100)
+        } else {
+            editHeightCm = ""
+        }
+        isEditing = true
+    }
+
+    private func cancelEditing() {
+        isEditing = false
+    }
+
+    private func saveEdits() {
+        // Convert cm to meters
+        let widthMeters = Float(editWidthCm).map { $0 / 100 }
+        let heightMeters = Float(editHeightCm).map { $0 / 100 }
+
+        let updatedDamage = damage.withMeasurements(
+            width: widthMeters,
+            height: heightMeters
+        )
+
+        appState.updateDamage(updatedDamage)
+        isEditing = false
+        dismiss()
     }
 
     private func imageSection(_ image: UIImage) -> some View {
@@ -130,20 +191,66 @@ struct DamageDetailView: View {
             }
 
             VStack(spacing: 8) {
-                if let area = damage.formattedArea {
+                if isEditing {
+                    // Editable width field
+                    HStack {
+                        Text("Width")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            TextField("0", text: $editWidthCm)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 80)
+                                .multilineTextAlignment(.trailing)
+                            Text("cm")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    // Editable height field
+                    HStack {
+                        Text("Height")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            TextField("0", text: $editHeightCm)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 80)
+                                .multilineTextAlignment(.trailing)
+                            Text("cm")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    // Calculated area (read-only)
                     HStack {
                         Text("Area")
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text(area)
+                        Text(calculatedAreaText)
                             .font(.title3)
                             .fontWeight(.semibold)
                             .foregroundColor(.blue)
                     }
-                }
+                } else {
+                    // Read-only display
+                    if let area = damage.formattedArea {
+                        HStack {
+                            Text("Area")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(area)
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                        }
+                    }
 
-                if let dimensions = damage.formattedDimensions {
-                    DamageInfoRow(label: "Dimensions", value: dimensions)
+                    if let dimensions = damage.formattedDimensions {
+                        DamageInfoRow(label: "Dimensions", value: dimensions)
+                    }
                 }
 
                 if let distance = damage.distanceFromCamera {
@@ -153,7 +260,7 @@ struct DamageDetailView: View {
                     )
                 }
 
-                if let confidence = damage.measurementConfidence {
+                if !isEditing, let confidence = damage.measurementConfidence {
                     DamageInfoRow(
                         label: "Measurement accuracy",
                         value: "\(Int(confidence * 100))%"
@@ -163,6 +270,20 @@ struct DamageDetailView: View {
             .padding()
             .background(Color.blue.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    /// Calculated area from current edit fields
+    private var calculatedAreaText: String {
+        guard let width = Float(editWidthCm), let height = Float(editHeightCm),
+              width > 0, height > 0 else {
+            return "-- cm²"
+        }
+        let areaCm2 = width * height
+        if areaCm2 >= 10000 {
+            return String(format: "%.2f m²", areaCm2 / 10000)
+        } else {
+            return String(format: "%.0f cm²", areaCm2)
         }
     }
 

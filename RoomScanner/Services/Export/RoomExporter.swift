@@ -3,6 +3,8 @@ import RoomPlan
 import PDFKit
 import UIKit
 import simd
+import SceneKit
+import ModelIO
 
 /// Service for exporting room data in various formats
 final class RoomExporter {
@@ -192,6 +194,37 @@ final class RoomExporter {
             return (modelURL, metadataURL)
         } catch {
             throw ExportError.exportFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - GLB Export
+
+    /// Export room as GLB for web display (converts USDZ to GLB via SceneKit/ModelIO)
+    func exportGLB(capturedRoom: CapturedRoom) async throws -> URL {
+        // First export as USDZ
+        let usdzURL = try await exportUSDZ(capturedRoom: capturedRoom)
+
+        // Load USDZ into SceneKit
+        let scene: SCNScene
+        do {
+            scene = try SCNScene(url: usdzURL, options: [.checkConsistency: true])
+        } catch {
+            throw ExportError.exportFailed("Failed to load USDZ: \(error.localizedDescription)")
+        }
+
+        // Create GLB output URL
+        let glbFilename = generateFilename(extension: "glb")
+        let glbURL = exportDirectory.appendingPathComponent(glbFilename)
+
+        // Convert to ModelIO asset and export as GLB
+        let asset = MDLAsset(scnScene: scene)
+
+        // GLB export requires the URL to have .glb extension (which it does)
+        do {
+            try asset.export(to: glbURL)
+            return glbURL
+        } catch {
+            throw ExportError.exportFailed("Failed to export GLB: \(error.localizedDescription)")
         }
     }
 

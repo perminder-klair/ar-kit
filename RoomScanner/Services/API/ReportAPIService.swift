@@ -178,7 +178,15 @@ actor ReportAPIService {
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
 
-        let mimeType = fileType == "model_usdz" ? "model/vnd.usdz+zip" : "image/jpeg"
+        let mimeType: String
+        switch fileType {
+        case "model_usdz":
+            mimeType = "model/vnd.usdz+zip"
+        case "model_glb":
+            mimeType = "model/gltf-binary"
+        default:
+            mimeType = "image/jpeg"
+        }
         body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
         body.append(data)
         body.append("\r\n".data(using: .utf8)!)

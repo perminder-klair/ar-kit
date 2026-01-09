@@ -12,6 +12,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@google/model-viewer": "^4.1.0",
     "@vercel/blob": "^2.0.0",
     "@vercel/postgres": "^0.10.0",
     "drizzle-orm": "^0.45.1",

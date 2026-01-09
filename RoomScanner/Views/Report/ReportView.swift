@@ -36,6 +36,27 @@ struct ReportView: View {
                         onExportThreeJS: exportThreeJS
                     )
 
+                    // Save to Cloud Button
+                    Button {
+                        saveToCloud()
+                    } label: {
+                        HStack {
+                            if isSavingToCloud {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: savedReportId != nil ? "arrow.triangle.2.circlepath.icloud" : "icloud.and.arrow.up")
+                            }
+                            Text(savedReportId != nil ? "Re-save to Cloud" : "Save to Cloud")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .cornerRadius(12)
+                    }
+                    .disabled(isSavingToCloud)
+
                     // Damage Analysis Summary (if available)
                     if let damageResult = appState.damageAnalysisResult {
                         DamageReportSection(damageResult: damageResult)
@@ -93,7 +114,7 @@ struct ReportView: View {
         }
         .onAppear {
             dimensions = processor.extractDimensions(from: capturedRoom)
-            if dimensions != nil {
+            if dimensions != nil && savedReportId == nil {
                 saveToCloud()
             }
         }
@@ -235,6 +256,21 @@ struct ReportView: View {
                     modelURL: modelURL
                 )
                 appState.sessionTelemetry.network.fileUploadCount += 1
+
+                // Upload GLB model for web 3D viewer
+                do {
+                    let glbURL = try await exporter.exportGLB(capturedRoom: capturedRoom)
+                    try await ReportAPIService.shared.uploadFile(
+                        reportId: reportId,
+                        data: try Data(contentsOf: glbURL),
+                        fileName: glbURL.lastPathComponent,
+                        fileType: "model_glb"
+                    )
+                    appState.sessionTelemetry.network.fileUploadCount += 1
+                } catch {
+                    // GLB export is optional - log but don't fail the save
+                    print("GLB export failed (non-critical): \(error.localizedDescription)")
+                }
 
                 showSaveSuccess = true
                 exportSuccessHaptic.toggle()

@@ -31,9 +31,9 @@ export async function POST(
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (!fileType || !["damage_image", "model_usdz"].includes(fileType)) {
+    if (!fileType || !["damage_image", "model_usdz", "model_glb"].includes(fileType)) {
       return NextResponse.json(
-        { error: "Invalid fileType. Must be 'damage_image' or 'model_usdz'" },
+        { error: "Invalid fileType. Must be 'damage_image', 'model_usdz', or 'model_glb'" },
         { status: 400 }
       );
     }

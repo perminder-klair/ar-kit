@@ -146,6 +146,25 @@ final class AppState: ObservableObject {
         sessionTelemetry.confidence.update(from: result.detectedDamages)
     }
 
+    /// Update a single damage item in the analysis result
+    func updateDamage(_ updatedDamage: DetectedDamage) {
+        guard let result = damageAnalysisResult else { return }
+        guard let index = result.detectedDamages.firstIndex(where: { $0.id == updatedDamage.id }) else { return }
+
+        var damages = result.detectedDamages
+        damages[index] = updatedDamage
+
+        damageAnalysisResult = DamageAnalysisResult(
+            id: result.id,
+            analysisDate: result.analysisDate,
+            roomScanId: result.roomScanId,
+            detectedDamages: damages,
+            overallCondition: result.overallCondition,
+            analyzedImageCount: result.analyzedImageCount,
+            processingTimeSeconds: result.processingTimeSeconds
+        )
+    }
+
     func cancelDamageAnalysis() {
         damageAnalysisService.reset()
         sessionTelemetry.timestamps.markAnalysisEnded()

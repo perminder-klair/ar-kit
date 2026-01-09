@@ -211,6 +211,34 @@ struct DetectedDamage: Identifiable, Codable {
             return String(format: "%.2f m", meters)
         }
     }
+
+    /// Create a copy with updated measurements (area auto-calculated from width × height)
+    func withMeasurements(width: Float?, height: Float?) -> DetectedDamage {
+        let area: Float? = if let w = width, let h = height {
+            w * h
+        } else {
+            nil
+        }
+
+        return DetectedDamage(
+            id: id,
+            type: type,
+            severity: severity,
+            description: description,
+            surfaceType: surfaceType,
+            surfaceId: surfaceId,
+            wallName: wallName,
+            confidence: confidence,
+            boundingBox: boundingBox,
+            recommendation: recommendation,
+            imageIndex: imageIndex,
+            realWidth: width,
+            realHeight: height,
+            realArea: area,
+            distanceFromCamera: distanceFromCamera,
+            measurementConfidence: 1.0  // Manual measurements have full confidence
+        )
+    }
 }
 
 /// Complete damage analysis result
